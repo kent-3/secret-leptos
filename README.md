@@ -45,7 +45,7 @@ If you'd rather not use npm, you can install the Tailwind binary
 
 ## Developing
 
-Start a development server:
+Start a development server at 127.0.0.1:8080:
 
 ```bash
 trunk serve
