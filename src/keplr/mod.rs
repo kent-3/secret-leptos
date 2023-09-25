@@ -71,7 +71,6 @@ pub fn get_offline_signer() -> Result<KeplrOfflineSigner> {
 }
 
 pub async fn get_viewing_key(token_address: String) -> Result<String> {
-    // TODO - add a guard to check if keplr is enabled?
     log::debug!("Trying to get viewing key...");
 
     let key_promise = get_secret_20_viewing_key(CHAIN_ID, &token_address);

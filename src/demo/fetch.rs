@@ -1,4 +1,6 @@
-use leptos::{error::Result, *};
+//! Adapted from https://github.com/leptos-rs/leptos/tree/main/examples/fetch
+
+use leptos::{error::Result, logging::log, *};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -38,7 +40,13 @@ async fn fetch_query(query: RawQuery) -> Result<String> {
 }
 
 #[component]
-pub fn FetchExperiment() -> impl IntoView {
+pub fn QueryDemo() -> impl IntoView {
+    log::debug!("rendering <QueryDemo/>");
+
+    on_cleanup(|| {
+        log!("cleaning up <QueryDemo/>");
+    });
+
     let (query, set_query) = create_signal::<RawQuery>("".into());
 
     // we use local_resource here because
@@ -66,6 +74,7 @@ pub fn FetchExperiment() -> impl IntoView {
     let response_view = move || response.and_then(|data| view! { <p>{data}</p> });
 
     view! {
+        <h2>"Query Demo"</h2>
         <div>
             <label>
                 "What is your query?"
@@ -73,6 +82,7 @@ pub fn FetchExperiment() -> impl IntoView {
                     style="margin: 0.5rem;"
                     type="text"
                     prop:value=move || query.get().to_string()
+                    // TODO - make this an on:click event on a button instead
                     on:input=move |ev| {
                         let val = event_target_value(&ev).parse::<RawQuery>().unwrap_or("".into());
                         set_query(val);

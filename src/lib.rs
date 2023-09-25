@@ -7,43 +7,42 @@ use state::MyAccount;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 
+pub mod components;
 pub mod constants;
+mod demo;
 mod keplr;
-pub(crate) mod secret;
 mod secretjs;
-mod spinner;
 mod state;
-mod websockets;
-use websockets::WebsocketDemo;
 
 pub use constants::{CHAIN_ID, LCD_URL};
+use demo::{QueryDemo, WebsocketDemo};
 use keplr::KeplrTests;
-pub use secret::Secret;
+use secretjs::SecretJsTests;
 use secretjs::{ClientOptionsBuilder, SecretNetworkClient};
 use state::GlobalState;
 
 #[component]
-pub fn App(debug: bool) -> impl IntoView {
+pub fn App(demo: bool) -> impl IntoView {
     log::debug!("rendering <App/>");
 
-    let (debug_mode, _) = create_signal(debug);
-    // TODO - add the keplr/secretjs init stuff here?
+    let (demo_mode, _) = create_signal(demo);
+
     // TODO - look into saving/loading app state from localStorage
     //      - figure out localStorage interactions
     //      - do I use JSON or RON or what?
 
     // Passing Signals through Context
-    // let (enabled, set_enabled) = create_signal(false);
-    // provide_context(enabled);
     let ctx = GlobalState::new();
     provide_context(ctx);
     provide_context(MyAccount::new());
 
-    let get_account_action = create_action(|_input: &()| async move { keplr::get_account().await });
-    let get_account = move || get_account_action.dispatch(());
-    let address = get_account_action.value();
+    let keplr_is_enabled = move || ctx.keplr_enabled.get();
 
-    let connect_action = create_action(move |input: &()| async move {
+    let get_account_action = create_action(|_: &()| async move { keplr::get_account().await });
+    let get_account = move || get_account_action.dispatch(());
+    let my_address = get_account_action.value();
+
+    let connect_action = create_action(move |_: &()| async move {
         let address = keplr::get_account().await.unwrap_or_default();
         let keplr_offline_signer = keplr::get_offline_signer().unwrap();
         let encryption_utils = keplr::get_enigma_utils(CHAIN_ID);
@@ -62,53 +61,11 @@ pub fn App(debug: bool) -> impl IntoView {
         address
     });
 
-    // let create_signing_client = move |_| {
-    //     // Example running a Future
-    //     // log!("running future");
-    //     // leptos::spawn_local(async move {
-    //     //     let address = keplr::get_account().await.unwrap_or_default();
-    //     //     log!("inside future: {address}");
-    //     //     ctx.my_address.set(address);
-    //     // });
-    //     // log!("future over");
-    //
-    //     log!("dispatch start");
-    //     get_account_action.dispatch(());
-    //     log!("dispatch end?");
-    //
-    //     let keplr_offline_signer = keplr::get_offline_signer().unwrap();
-    //     let encryption_utils = keplr::get_enigma_utils(CHAIN_ID);
-    //     let client_options = secretjs::ClientOptionsBuilder::new()
-    //         .url(LCD_URL)
-    //         .chain_id(CHAIN_ID)
-    //         .encryption_utils(encryption_utils)
-    //         .wallet(keplr_offline_signer)
-    //         .wallet_address("secret12kw8ja5rgcxq66x3q48m9ec4n7g8a29xayprgy")
-    //         .build();
-    //     let client = SecretNetworkClient::new(&client_options);
-    //     log::debug!("{:#?}", &client.address());
-    //     ctx.keplr_enabled.set(true);
-    //     ctx.my_address.set(client.address());
-    // };
-
     let connect_button = move || {
         view! {
                 <button
                     on:click=move |_| connect_action.dispatch(())
-                    // class="btn w-48"
                 >"Connect Ye Wallet"</button>
-        }
-    };
-
-    view! {
-        <div class="flex justify-between items-center">
-            <h1>"Hello World"</h1>
-        <Show
-            when=move || ctx.keplr_enabled.get()
-            fallback=connect_button
-        >
-            <p>"Yer Address is "<code>{connect_action.value()}</code></p>
-        </Show>
 
             // cool button / notification badge animation
             // <span class="group relative inline-flex">
@@ -118,19 +75,31 @@ pub fn App(debug: bool) -> impl IntoView {
             //       <span class="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
             //     </span>
             // </span>
+        }
+    };
+
+    view! {
+        <div class="flex justify-between items-center">
+            <h1>"Hello World"</h1>
+            <Show
+                when=keplr_is_enabled
+                fallback=connect_button
+            >
+                <p>"Yer Address is "<code>{ctx.my_address}</code></p>
+            </Show>
         </div>
         <Router>
             <main>
                 <hr/>
                 <nav>
                     <A exact=true href="/" >"Home"</A>
-                    <A href="secret" >"Secret"</A>
                     <Show
-                        when=debug_mode
-                        fallback=|| view! { <meta/> }
+                        when=demo_mode
+                        fallback=|| ()
                     >
-                        <A href="keplr-tests" >"Keplr"</A>
-                        <A href="websocket-tests" >"Websocket Demo"</A>
+                        <A href="keplr-demo" >"Keplr"</A>
+                        <A href="query-demo" >"Query"</A>
+                        <A href="websocket-demo" >"Websocket"</A>
                     </Show>
                 </nav>
                 <hr/>
@@ -147,22 +116,22 @@ pub fn App(debug: bool) -> impl IntoView {
                         }
                     />
                     <Route
-                        path="secret"
-                        view=|| view! { <Secret/> }
-                    />
-                    <Route
-                        path="keplr-tests"
+                        path="keplr-demo"
                         view=|| view! {
                             <KeplrTests/>
                             <hr/>
-                            <IntegrationTests/>
+                            <SecretJsTests/>
                             <hr/>
                             <h2>"UI Tests"</h2>
                             <Modal/>
                         }
                     />
                     <Route
-                        path="websocket-tests"
+                        path="query-demo"
+                        view=|| view! { <QueryDemo/> }
+                    />
+                    <Route
+                        path="websocket-demo"
                         view=|| view! {
                             <WebsocketDemo/>
                         }
@@ -195,150 +164,7 @@ fn Home() -> impl IntoView {
 }
 
 #[component]
-pub fn IntegrationTests() -> impl IntoView {
-    let ctx = use_context::<MyAccount>().expect("there should be a MyAccount context provided");
-    let my_client = ctx.my_client.get_untracked();
-
-    let create_random_wallet = move |_| {
-        log::debug!("trying to create wallet...");
-
-        let wallet = crate::secretjs::Wallet::new();
-
-        log::debug!("{:#?}", &wallet);
-    };
-    fn create_readonly_client() {
-        log::debug!("trying to create client...");
-
-        let client_options = ClientOptionsBuilder::new()
-            .url(LCD_URL)
-            .chain_id(CHAIN_ID)
-            .build();
-        let client = SecretNetworkClient::new(&client_options);
-
-        log::debug!("{:#?}", &client);
-    }
-
-    fn create_signing_client() -> SecretNetworkClient {
-        log::debug!("trying to create client...");
-
-        let keplr_offline_signer = keplr::get_offline_signer().unwrap();
-        let encryption_utils = keplr::get_enigma_utils(CHAIN_ID);
-        let client_options = secretjs::ClientOptionsBuilder::new()
-            .url(LCD_URL)
-            .chain_id(CHAIN_ID)
-            .encryption_utils(encryption_utils)
-            .wallet(keplr_offline_signer)
-            .wallet_address("secret12kw8ja5rgcxq66x3q48m9ec4n7g8a29xayprgy")
-            .build();
-        let client = SecretNetworkClient::new(&client_options);
-
-        log::debug!("{:#?}", &client);
-
-        client
-    }
-
-    async fn do_a_query(client: SecretNetworkClient) -> Result<String> {
-        // let client = create_signing_client();
-
-        // ------------------------------------------------------------
-        let query = Object::new();
-        // query = {}
-        //
-        let _ = js_sys::Reflect::set(&query, &JsValue::from_str("token_info"), &Object::new());
-        // query = {"token_info": {}}
-
-        // ------------------------------------------------------------
-
-        // { code_hash?: string; contract_address: string; query: T }
-        let query_contract_request = Object::new();
-
-        let _ = js_sys::Reflect::set(
-            &query_contract_request,
-            &JsValue::from_str("code_hash"),
-            &JsValue::from_str("5a085bd8ed89de92b35134ddd12505a602c7759ea25fb5c089ba03c8535b3042"),
-        );
-
-        let _ = js_sys::Reflect::set(
-            &query_contract_request,
-            &JsValue::from_str("contract_address"),
-            &JsValue::from_str("secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852"),
-        );
-
-        let _ = js_sys::Reflect::set(&query_contract_request, &JsValue::from_str("query"), &query);
-
-        log::debug!("query_contract_request: {:#?}", &query_contract_request);
-
-        let query_promise = client
-            .query()
-            .compute()
-            .query_contract(&query_contract_request.into());
-        let query_js_value = JsFuture::from(query_promise).await;
-
-        match query_js_value {
-            Ok(js_value) => {
-                log::debug!("{js_value:#?}");
-                Ok(JSON::stringify(&js_value).unwrap().into())
-            }
-            Err(js_error) => {
-                log::debug!("{js_error:#?}");
-                Ok(JSON::stringify(&js_error).unwrap().into())
-            }
-        }
-    }
-
-    let query_action = create_action(|input: &SecretNetworkClient| {
-        let input = input.to_owned();
-        async move { do_a_query(input).await }
-    });
-    let dispatch_query_action = move |_| query_action.dispatch(ctx.my_client.get());
-    let pending_query = query_action.pending();
-    let query_response = query_action.value();
-
-    let create_readonly_client = move |_| {
-        create_readonly_client();
-    };
-
-    let create_signing_client = move |_| {
-        create_signing_client();
-    };
-
-    view! {
-        <h2>"SecretJS Tests"</h2>
-
-        <button on:click=create_random_wallet >
-        "create_random_wallet"
-        </button>
-        <br/>
-        <button on:click=create_readonly_client >
-        "create_readonly_client"
-        </button>
-        <br/>
-        <button on:click=create_signing_client >
-        "create_signing_client"
-        </button>
-        <br/>
-        <button on:click=dispatch_query_action >
-        "dispatch_query_action"
-        </button>
-        <br/>
-        <Show when=move || query_response().is_some() fallback=|| ()>
-        <p>
-            "Response: "
-            <code>
-                {move || {
-                    match query_response() {
-                        Some(resp) => resp.unwrap(),
-                        None => "".to_string(),
-                    }
-                } }
-            </code>
-        </p>
-        </Show>
-    }
-}
-
-#[component]
-pub fn Modal(// Signal that will be toggled when the button is clicked.
+fn Modal(// Signal that will be toggled when the button is clicked.
     // setter: WriteSignal<bool>,
 ) -> impl IntoView {
     log::debug!("rendering <Modal/>");
@@ -347,16 +173,20 @@ pub fn Modal(// Signal that will be toggled when the button is clicked.
         log!("cleaning up <Modal/>");
     });
 
-    // Example using signal as prop
+    // Examples using write signal as prop
     // setter.set(true);
+    // setter.update(|value| *value = !*value);
 
-    // Example showing how to use context
+    // Example using read signal from context
     // let getter =
     //     use_context::<ReadSignal<bool>>().expect("there to be an 'enabled' signal provided");
 
     // Example using a GlobalState struct as context
     let ctx = use_context::<GlobalState>().expect("provide global state context");
+    let is_keplr_enabled = move || ctx.keplr_enabled;
+    let my_address = move || ctx.my_address;
 
+    // Creating a NodeRef allows using methods on the HtmlElement directly
     let dialog_ref = create_node_ref::<Dialog>();
 
     let open_modal = move |_| {
@@ -364,11 +194,8 @@ pub fn Modal(// Signal that will be toggled when the button is clicked.
         let node = dialog_ref.get().unwrap();
         node.show_modal().expect("I don't know what I expected");
 
-        // Example using signal as prop
-        // setter.update(|value| *value = !*value);
-
-        // Example showing how to use context
-        // ctx.enabled.update(|value| *value = !*value);
+        // Example using context
+        // ctx.keplr_enabled.update(|value| *value = !*value);
     };
     let close_modal = move |_| {
         log::debug!("close modal");
@@ -381,9 +208,8 @@ pub fn Modal(// Signal that will be toggled when the button is clicked.
             _ref=dialog_ref
         >
             <p>"Greetings, one and all!"</p>
-            // <p>"Keplr enabled: "{getter}</p>
-            <p>"Connected?: "{move || ctx.keplr_enabled.get()}</p>
-            <p>"Address: "{move || ctx.my_address}</p>
+            <p>"Connected?: "{is_keplr_enabled}</p>
+            <p>"Address: "{my_address}</p>
             <button
                 on:click=close_modal
             >

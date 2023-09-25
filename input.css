@@ -4,17 +4,8 @@
 
 html {
   color-scheme: dark;
-  @apply max-w-5xl mx-auto sm:px-4;
-  /* @apply overflow-hidden; */
-}
-
-body {
-  /* perfectly neutral colors. (taken from microsoft docs) */
-  /* background-color: #171717; */
-  /* color: #e6e6e6; */
-  @apply bg-neutral-900 text-neutral-200;
-  /* -webkit-font-smoothing: antialiased; */
-  /* text-rendering: optimizelegibility; */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizelegibility;
   font-family:
     Segoe UI,
     SegoeUI,
@@ -22,6 +13,11 @@ body {
     Helvetica,
     Arial,
     sans-serif;
+  @apply max-w-5xl mx-auto sm:px-4;
+}
+
+body {
+  @apply bg-neutral-900 text-neutral-200;
 }
 
 code {
@@ -76,6 +72,7 @@ input {
 .success {
   background-color: green;
 }
+
 .error {
   color: #efd9fd;
   background-color: #3b2e58;
