@@ -75,17 +75,17 @@ pub fn App(demo: bool) -> impl IntoView {
     };
 
     view! {
-        <div class="flex justify-between items-center">
-            <h1>"Hello World"</h1>
-            <Show
-                when=keplr_is_enabled
-                fallback=connect_button
-            >
-                <p>"Yer Address is "<code>{ctx.my_address}</code></p>
-            </Show>
-        </div>
         <Router>
-            <main>
+            <header>
+                <div class="flex justify-between items-center">
+                    <h1>"Hello World"</h1>
+                    <Show
+                        when=keplr_is_enabled
+                        fallback=connect_button
+                    >
+                        <p>"Yer Address is "<code>{ctx.my_address}</code></p>
+                    </Show>
+                </div>
                 <hr/>
                 <nav>
                     <A exact=true href="/" >"Home"</A>
@@ -99,6 +99,8 @@ pub fn App(demo: bool) -> impl IntoView {
                     </Show>
                 </nav>
                 <hr/>
+            </header>
+            <main>
                 <AnimatedRoutes
                     intro="slideIn"
                     outro="fadeOut"
