@@ -1,11 +1,8 @@
 #![allow(unused)]
 
-use js_sys::{Object, JSON};
-use leptos::{error::Result, html::Dialog, logging::log, *};
+use leptos::{html::Dialog, logging::log, *};
 use leptos_router::*;
 use state::MyAccount;
-use wasm_bindgen::JsValue;
-use wasm_bindgen_futures::JsFuture;
 
 pub mod components;
 pub mod constants;
@@ -30,6 +27,9 @@ pub fn App(demo: bool) -> impl IntoView {
     // TODO - look into saving/loading app state from localStorage
     //      - figure out localStorage interactions
     //      - do I use JSON or RON or what?
+    //
+    // let local_storage: Option<GlobalState> = read_local_storage();
+    // let ctx = local_storage.unwrap_or_else(|| GlobalState::new());
 
     // Passing Signals through Context
     let ctx = GlobalState::new();
@@ -37,10 +37,6 @@ pub fn App(demo: bool) -> impl IntoView {
     provide_context(MyAccount::new());
 
     let keplr_is_enabled = move || ctx.keplr_enabled.get();
-
-    let get_account_action = create_action(|_: &()| async move { keplr::get_account().await });
-    let get_account = move || get_account_action.dispatch(());
-    let my_address = get_account_action.value();
 
     let connect_action = create_action(move |_: &()| async move {
         let address = keplr::get_account().await.unwrap_or_default();

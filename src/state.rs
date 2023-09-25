@@ -1,7 +1,5 @@
 use crate::{ClientOptionsBuilder, CHAIN_ID, LCD_URL};
-use js_sys::Object;
 use leptos::{create_rw_signal, RwSignal};
-use wasm_bindgen::{JsCast, JsValue};
 
 use crate::secretjs::SecretNetworkClient;
 

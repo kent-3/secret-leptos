@@ -1,22 +1,17 @@
 use crate::state::MyAccount;
 use js_sys::{Object, JSON};
-use leptos::{error::Result, html::Dialog, logging::log, *};
-use leptos_router::*;
+use leptos::{error::Result, *};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 
 use crate::constants::{CHAIN_ID, LCD_URL};
-use crate::demo::{QueryDemo, WebsocketDemo};
 use crate::keplr;
-use crate::keplr::KeplrTests;
 use crate::secretjs;
 use crate::secretjs::{ClientOptionsBuilder, SecretNetworkClient};
-use crate::state::GlobalState;
 
 #[component]
 pub fn SecretJsTests() -> impl IntoView {
     let ctx = use_context::<MyAccount>().expect("there should be a MyAccount context provided");
-    let my_client = ctx.my_client.get_untracked();
 
     let create_random_wallet = move |_| {
         log::debug!("trying to create wallet...");
@@ -132,18 +127,21 @@ pub fn SecretJsTests() -> impl IntoView {
         "dispatch_query_action"
         </button>
         <br/>
-        <Show when=move || query_response().is_some() fallback=|| ()>
-        <p>
-            "Response: "
-            <code>
-                {move || {
-                    match query_response() {
-                        Some(resp) => resp.unwrap(),
-                        None => "".to_string(),
-                    }
-                } }
-            </code>
-        </p>
+        <Show
+            when=move || query_response().is_some()
+            fallback=|| ()
+        >
+            <p>
+                "Response: "
+                <code>
+                    {move || {
+                        match query_response() {
+                            Some(resp) => resp.unwrap(),
+                            None => "".to_string(),
+                        }
+                    } }
+                </code>
+            </p>
         </Show>
     }
 }

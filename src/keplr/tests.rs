@@ -1,11 +1,7 @@
 use crate::keplr::*;
-use crate::GlobalState;
-use leptos::*;
 
 #[component]
 pub fn KeplrTests() -> impl IntoView {
-    let ctx = use_context::<GlobalState>().expect("we need a global state context");
-
     let enable_keplr_action = create_action(|_: &()| async move { enable_keplr().await });
     let get_signer_action =
         create_action(|_: &()| async move { get_offline_signer().map(|x| format!("{:?}", x)) });

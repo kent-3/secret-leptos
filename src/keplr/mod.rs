@@ -1,4 +1,4 @@
-use crate::{state::GlobalState, CHAIN_ID};
+use crate::CHAIN_ID;
 use js_sys::Promise;
 use leptos::{error::Result, *};
 use serde::Deserialize;

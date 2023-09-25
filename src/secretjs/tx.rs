@@ -1,6 +1,4 @@
-use crate::keplr::{EnigmaUtils, KeplrOfflineSigner};
-use js_sys::{Object, Promise};
-use serde::{Deserialize, Serialize};
+use js_sys::Object;
 use wasm_bindgen::prelude::*;
 
 pub fn create_tx_options(

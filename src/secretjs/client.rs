@@ -1,6 +1,5 @@
 use crate::keplr::{EnigmaUtils, KeplrOfflineSigner};
 use js_sys::{Object, Promise};
-use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
