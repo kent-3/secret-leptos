@@ -1,5 +1,5 @@
-use crate::{ClientOptionsBuilder, CHAIN_ID, LCD_URL};
-use leptos::{create_rw_signal, RwSignal};
+use crate::{ClientOptionsBuilder, CHAIN_ID, GRPC_URL, LCD_URL};
+use leptos::{create_rw_signal, create_signal, ReadSignal, RwSignal};
 
 use crate::secretjs::SecretNetworkClient;
 
@@ -16,6 +16,23 @@ impl GlobalState {
             keplr_enabled: create_rw_signal(false),
             my_address: create_rw_signal("unknown".to_string()),
         }
+    }
+}
+
+// not sure this a good approach...
+use secretrs::clients::AuthQueryClient;
+#[derive(Clone, Debug)]
+pub struct SecretQueryClient {
+    pub auth: AuthQueryClient<::tonic_web_wasm_client::Client>,
+}
+
+impl SecretQueryClient {
+    pub fn new() -> Self {
+        let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
+
+        let mut auth = AuthQueryClient::new(web_client);
+
+        Self { auth }
     }
 }
 

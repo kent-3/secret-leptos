@@ -2,21 +2,33 @@
 
 use leptos::{html::Dialog, logging::log, *};
 use leptos_router::*;
+use serde::{Deserialize, Serialize};
 use state::MyAccount;
 
 pub mod components;
 pub mod constants;
-mod demo;
+// mod demo;
 mod keplr;
 mod secretjs;
 mod state;
 
-pub use constants::{CHAIN_ID, LCD_URL};
-use demo::{QueryDemo, WebsocketDemo};
+pub use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
+// use demo::{QueryDemo, WebsocketDemo};
 use keplr::KeplrTests;
 use secretjs::SecretJsTests;
 use secretjs::{ClientOptionsBuilder, SecretNetworkClient};
 use state::GlobalState;
+
+use base64::prelude::{Engine, BASE64_STANDARD};
+use secretrs::{
+    clients::{AuthQueryClient, ComputeQueryClient, TendermintQueryClient},
+    proto::cosmos::auth::v1beta1::QueryParamsRequest,
+    proto::secret::compute::v1beta1::{QueryByContractAddressRequest, QuerySecretContractRequest},
+    EncryptionUtils,
+};
+use state::SecretQueryClient;
+use thiserror::Error;
+use wasm_bindgen::UnwrapThrowExt;
 
 #[component]
 pub fn App(demo: bool) -> impl IntoView {
@@ -36,7 +48,101 @@ pub fn App(demo: bool) -> impl IntoView {
     provide_context(ctx);
     provide_context(MyAccount::new());
 
+    // let secret = SecretQueryClient::new();
+    // provide_context(secret);
+
     let keplr_is_enabled = move || ctx.keplr_enabled.get();
+
+    log::debug!("Creating Clients");
+    let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
+
+    log::debug!("    Auth");
+    let mut auth_client = AuthQueryClient::new(web_client.clone());
+    log::debug!("    Tendermint");
+    let mut tendermint_client = TendermintQueryClient::new(web_client.clone());
+    log::debug!("    Compute");
+    let mut compute_client = ComputeQueryClient::new(web_client.clone());
+
+    let get_auth_params_action = create_action(move |_: &()| {
+        let mut auth = auth_client.clone();
+        async move {
+            let response = auth.params(QueryParamsRequest {}).await;
+            match response {
+                Ok(result) => log::debug!("{:#?}", result.into_inner()),
+                Err(status) => log::error!("{}", status),
+            }
+        }
+    });
+
+    let get_auth_params_button = move || {
+        view! {
+                <button
+                    on:click=move |_| get_auth_params_action.dispatch(())
+                >"TEST"</button>
+        }
+    };
+
+    let query_contract_action = create_action(move |_: &()| {
+        let mut compute = compute_client.clone();
+        async move {
+            let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852".to_string();
+            let request = QueryByContractAddressRequest {
+                contract_address: contract_address.clone(),
+            };
+
+            // log::info!("Computing code hash...");
+            // let response = compute.code_hash_by_contract_address(request).await;
+            //
+            // match response {
+            //     Ok(result) => log::debug!("{}", result.into_inner().code_hash),
+            //     Err(status) => log::error!("{}", status),
+            // }
+
+            let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
+            // log::debug!("code_hash => {}", code_hash);
+
+            let query = QueryMsg::MemberCode {
+                address: "secret1jj30ulmuxem55awzhfnr802ml7rddufe0jadf7".to_string(),
+                key: "amber-rocks".to_string(),
+            };
+
+            let encryption_utils = EncryptionUtils::new(None, "secret-4").unwrap_throw();
+            let encrypted = encryption_utils.encrypt(&code_hash, &query).unwrap_throw();
+
+            let nonce = encrypted.nonce();
+            let query = encrypted.into_inner();
+
+            let request = QuerySecretContractRequest {
+                contract_address,
+                query,
+            };
+
+            log::debug!("Querying contract...");
+            let response = compute.query_secret_contract(request).await;
+
+            match response {
+                Ok(result) => {
+                    let response = result.into_inner();
+                    let decrypted_bytes = encryption_utils
+                        .decrypt(&nonce, &response.data)
+                        .unwrap_throw();
+                    let decrypted_b64_string = String::from_utf8(decrypted_bytes).unwrap_throw();
+                    let decoded_bytes = BASE64_STANDARD.decode(decrypted_b64_string).unwrap_throw();
+                    let data = String::from_utf8(decoded_bytes).unwrap_throw();
+                    log::debug!("{}", data);
+                }
+                Err(status) => log::error!("{}", status),
+            }
+        }
+    });
+
+    let query_contract_button = move || {
+        view! {
+                <button
+                    on:click=move |_| query_contract_action.dispatch(())
+                >"TEST"</button>
+        }
+    };
 
     let connect_action = create_action(move |_: &()| async move {
         let address = keplr::get_account().await.unwrap_or_default();
@@ -62,15 +168,6 @@ pub fn App(demo: bool) -> impl IntoView {
                 <button
                     on:click=move |_| connect_action.dispatch(())
                 >"Connect Ye Wallet"</button>
-
-            // cool button / notification badge animation
-            // <span class="group relative inline-flex">
-            //     <button class="btn" >"Connect Ye Wallet"</button>
-            //     <span class="flex absolute h-3 w-3 top-0 right-0 -mt-1 -mr-1">
-            //       <span class="group-hover:animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-            //       <span class="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
-            //     </span>
-            // </span>
         }
     };
 
@@ -81,7 +178,7 @@ pub fn App(demo: bool) -> impl IntoView {
                     <h1>"Hello World"</h1>
                     <Show
                         when=keplr_is_enabled
-                        fallback=connect_button
+                        fallback=query_contract_button
                     >
                         <p>"Yer Address is "<code>{ctx.my_address}</code></p>
                     </Show>
@@ -94,8 +191,8 @@ pub fn App(demo: bool) -> impl IntoView {
                         fallback=|| ()
                     >
                         <A href="keplr-demo" >"Keplr"</A>
-                        <A href="query-demo" >"Query"</A>
-                        <A href="websocket-demo" >"Websocket"</A>
+                        // <A href="query-demo" >"Query"</A>
+                        // <A href="websocket-demo" >"Websocket"</A>
                     </Show>
                 </nav>
                 <hr/>
@@ -124,16 +221,16 @@ pub fn App(demo: bool) -> impl IntoView {
                             <Modal/>
                         }
                     />
-                    <Route
-                        path="query-demo"
-                        view=|| view! { <QueryDemo/> }
-                    />
-                    <Route
-                        path="websocket-demo"
-                        view=|| view! {
-                            <WebsocketDemo/>
-                        }
-                    />
+                    // <Route
+                    //     path="query-demo"
+                    //     view=|| view! { <QueryDemo/> }
+                    // />
+                    // <Route
+                    //     path="websocket-demo"
+                    //     view=|| view! {
+                    //         <WebsocketDemo/>
+                    //     }
+                    // />
                 </AnimatedRoutes>
             </main>
         </Router>
@@ -220,4 +317,32 @@ fn Modal(// Signal that will be toggled when the button is clicked.
             "Example Modal"
         </button>
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    TokenInfo {},
+    MemberCode { address: String, key: String },
+    ValidCodes { codes: Vec<String> },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryAnswer {
+    TokenInfo {
+        name: String,
+        symbol: String,
+        decimals: u8,
+        total_supply: String,
+    },
+    MemberCode {
+        code: String,
+    },
+    ValidCodes {
+        codes: Vec<String>,
+    },
+    ViewingKeyError {
+        msg: String,
+    },
 }
