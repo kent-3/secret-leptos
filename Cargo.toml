@@ -25,7 +25,7 @@ wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = "0.3"
 leptos-use = { git = "https://github.com/Synphonyte/leptos-use.git", branch = "main" }
-secretrs = { version = "0.1.0-beta.0", default-features = false, features = ["bip32", "getrandom", "grpc-core"] }
+rsecret = { version = "0.1.0", path = "../secret-clients/rsecret" }
 tonic-web-wasm-client = "0.5.1"
 tonic = { version = "0.11.0", default-features = false }
 base64 = "0.22"

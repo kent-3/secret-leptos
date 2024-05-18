@@ -20,21 +20,21 @@ impl GlobalState {
 }
 
 // not sure this a good approach...
-use secretrs::clients::AuthQueryClient;
-#[derive(Clone, Debug)]
-pub struct SecretQueryClient {
-    pub auth: AuthQueryClient<::tonic_web_wasm_client::Client>,
-}
-
-impl SecretQueryClient {
-    pub fn new() -> Self {
-        let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
-
-        let mut auth = AuthQueryClient::new(web_client);
-
-        Self { auth }
-    }
-}
+// use secretrs::clients::AuthQueryClient;
+// #[derive(Clone, Debug)]
+// pub struct SecretQueryClient {
+//     pub auth: AuthQueryClient<::tonic_web_wasm_client::Client>,
+// }
+//
+// impl SecretQueryClient {
+//     pub fn new() -> Self {
+//         let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
+//
+//         let mut auth = AuthQueryClient::new(web_client);
+//
+//         Self { auth }
+//     }
+// }
 
 // Still deciding what else to include here.
 #[derive(Copy, Clone, Debug)]
