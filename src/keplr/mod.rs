@@ -1,6 +1,6 @@
 use crate::CHAIN_ID;
 use js_sys::Promise;
-use leptos::{error::Result, *};
+use leptos::{error::Result, logging::log, *};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -45,52 +45,52 @@ pub struct Account {
     pub pubkey: Vec<u8>,
 }
 
-pub async fn enable_keplr() -> Result<bool> {
-    log::debug!("Enabling Keplr...");
+pub async fn enable_keplr() -> bool {
+    log!("Enabling Keplr...");
 
     let enable_promise = enable(CHAIN_ID);
     let enable_js_value = JsFuture::from(enable_promise).await;
 
     match enable_js_value {
         Ok(js_value) => {
-            log::debug!("Ok: {js_value:#?}");
-            Ok(true)
+            log!("Ok: {js_value:#?}");
+            true
         }
         Err(js_error) => {
-            log::debug!("Err: {js_error:#?}");
-            Ok(false)
+            log!("Err: {js_error:#?}");
+            false
         }
     }
 }
 
 pub fn get_offline_signer() -> Result<KeplrOfflineSigner> {
     let signer = get_offline_signer_only_amino(CHAIN_ID);
-    log::debug!("{:#?}", signer);
+    log!("{:#?}", signer);
 
     Ok(signer)
 }
 
-pub async fn get_viewing_key(token_address: String) -> Result<String> {
-    log::debug!("Trying to get viewing key...");
+pub async fn get_viewing_key(token_address: String) -> String {
+    log!("Trying to get viewing key...");
 
     let key_promise = get_secret_20_viewing_key(CHAIN_ID, &token_address);
     let key_js_value = JsFuture::from(key_promise).await;
 
     match key_js_value {
         Ok(js_value) => {
-            log::debug!("Ok: {js_value:#?}");
+            log!("Ok: {js_value:#?}");
             let key = js_value.as_string().unwrap_or_default();
-            Ok(key)
+            key
         }
         Err(js_error) => {
-            log::debug!("Err: {js_error:#?}");
+            log!("Err: {js_error:#?}");
             let error = format!("{js_error:#?}");
-            Ok(error)
+            error
         }
     }
 }
 
-pub async fn get_account() -> Result<String> {
+pub async fn get_account() -> String {
     let signer = get_offline_signer_only_amino(CHAIN_ID);
 
     let accounts_promise = signer.get_accounts();
@@ -98,21 +98,21 @@ pub async fn get_account() -> Result<String> {
 
     match accounts_js_value {
         Ok(js_value) => {
-            log::debug!("Ok: {js_value:#?}");
+            log!("Ok: {js_value:#?}");
             let mut accounts: Vec<Account> = ::serde_wasm_bindgen::from_value(js_value).unwrap();
             let address = accounts.remove(0).address;
-            log::debug!("address: {:#?}", address);
-            Ok(address)
+            log!("address: {:#?}", address);
+            address
         }
         Err(js_error) => {
-            log::debug!("Err: {js_error:#?}");
-            Ok("Keplr is not enabled!".to_string())
+            log!("Err: {js_error:#?}");
+            "Keplr is not enabled!".to_string()
         }
     }
 }
 
 async fn keplr_get_enigma_utils() -> Result<()> {
     let enigma_utils = get_enigma_utils(CHAIN_ID);
-    log::debug!("{:#?}", enigma_utils);
+    log!("{:#?}", enigma_utils);
     Ok(())
 }

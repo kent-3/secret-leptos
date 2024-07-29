@@ -3,6 +3,9 @@ name = "leptos-tutorial"
 version = "0.1.0"
 edition = "2021"
 
+[build]
+target = "wasm32-unknown-unknown"
+
 [profile.release]
 codegen-units = 1
 lto = true
@@ -12,20 +15,22 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 thiserror = "1.0"
 futures = "0.3"
-leptos = { version = "0.5.0-rc2", features = ["csr", "nightly"] }
-leptos_router = { version = "0.5.0-rc2", features = ["csr", "nightly"] }
-leptos_meta = { version = "0.5.0-rc2", features = ["csr", "nightly"] }
+leptos = { version = "0.7.0-beta", features = ["csr", "nightly"] }
+leptos_router = { version = "0.7.0-beta", features = ["nightly"] }
+leptos_meta = { version = "0.7.0-beta" }
 console_log = "1.0"
 console_error_panic_hook = "0.1.7"
-log = "0.4"
-gloo-net = "0.4"
+gloo-net = "0.6"
 wasm-bindgen = "0.2"
 serde-wasm-bindgen = "0.6"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
-web-sys = "0.3"
+# web-sys = "0.3"
 leptos-use = { git = "https://github.com/Synphonyte/leptos-use.git", branch = "main" }
 rsecret = { version = "0.1.0", path = "../secret-clients/rsecret" }
 tonic-web-wasm-client = "0.5.1"
 tonic = { version = "0.11.0", default-features = false }
 base64 = "0.22"
+tracing = "0.1.40"
+tracing-subscriber = "0.3"
+tracing-subscriber-wasm = "0.1"

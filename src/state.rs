@@ -1,20 +1,21 @@
-use crate::{ClientOptionsBuilder, CHAIN_ID, GRPC_URL, LCD_URL};
-use leptos::{create_rw_signal, create_signal, ReadSignal, RwSignal};
+use crate::{CHAIN_ID, GRPC_URL, LCD_URL};
+use leptos::prelude::*;
+use rsecret::SecretNetworkClient;
 
-use crate::secretjs::SecretNetworkClient;
+// use crate::secretjs::SecretNetworkClient;
 
 // Still deciding what else to include here.
 #[derive(Copy, Clone, Debug)]
 pub struct GlobalState {
-    pub keplr_enabled: RwSignal<bool>,
-    pub my_address: RwSignal<String>,
+    pub keplr_enabled: RwSignal<bool, LocalStorage>,
+    pub my_address: RwSignal<String, LocalStorage>,
 }
 
 impl GlobalState {
     pub fn new() -> Self {
         Self {
-            keplr_enabled: create_rw_signal(false),
-            my_address: create_rw_signal("unknown".to_string()),
+            keplr_enabled: RwSignal::new_local(false),
+            my_address: RwSignal::new_local("unknown".to_string()),
         }
     }
 }
@@ -37,22 +38,22 @@ impl GlobalState {
 // }
 
 // Still deciding what else to include here.
-#[derive(Copy, Clone, Debug)]
-pub struct MyAccount {
-    pub my_client: RwSignal<SecretNetworkClient>,
-}
-
-impl MyAccount {
-    pub fn new() -> Self {
-        // Start out with a readonly client. Update to a signing client when connected.
-        let client_options = ClientOptionsBuilder::new()
-            .url(LCD_URL)
-            .chain_id(CHAIN_ID)
-            .build();
-        let client = SecretNetworkClient::new(&client_options);
-
-        Self {
-            my_client: create_rw_signal(client),
-        }
-    }
-}
+// #[derive(Clone, Debug)]
+// pub struct MyAccount {
+//     pub my_client: RwSignal<SecretNetworkClient>,
+// }
+//
+// impl MyAccount {
+//     pub fn new() -> Self {
+//         // Start out with a readonly client. Update to a signing client when connected.
+//         let client_options = ClientOptionsBuilder::new()
+//             .url(LCD_URL)
+//             .chain_id(CHAIN_ID)
+//             .build();
+//         let client = SecretNetworkClient::new(&client_options);
+//
+//         Self {
+//             my_client: RwSignal::new(client),
+//         }
+//     }
+// }

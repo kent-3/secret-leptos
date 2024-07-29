@@ -1,17 +1,21 @@
 use crate::keplr::*;
+use leptos::prelude::*;
 
 #[component]
 pub fn KeplrTests() -> impl IntoView {
-    let enable_keplr_action = create_action(|_: &()| async move { enable_keplr().await });
+    let enable_keplr_action: leptos::prelude::Action<(), bool, LocalStorage> =
+        Action::new_unsync(|input: &()| enable_keplr());
     let get_signer_action =
-        create_action(|_: &()| async move { get_offline_signer().map(|x| format!("{:?}", x)) });
-    let get_account_action = create_action(|_: &()| async move { get_account().await });
+        Action::new(|_: &()| async move { get_offline_signer().map(|x| format!("{:?}", x)) });
+    let get_account_action: leptos::prelude::Action<(), String, LocalStorage> =
+        Action::new_unsync(|input: &()| get_account());
     let get_enigma_utils_action =
-        create_action(|_: &()| async move { keplr_get_enigma_utils().await });
-    let get_viewing_key_action = create_action(|input: &String| {
-        let token_address = input.to_owned();
-        async move { get_viewing_key(token_address).await }
-    });
+        Action::new(|_: &()| async move { keplr_get_enigma_utils().await });
+    let get_viewing_key_action: leptos::prelude::Action<String, String, LocalStorage> =
+        Action::new_unsync(|input: &String| {
+            let token_address = input.clone();
+            get_viewing_key(token_address)
+        });
 
     let enable_keplr = move |_| enable_keplr_action.dispatch(());
     let get_signer = move |_| get_signer_action.dispatch(());
@@ -41,9 +45,8 @@ pub fn KeplrTests() -> impl IntoView {
                 {move || {
                     if let Some(result) = enabled() {
                         match result {
-                            Ok(true) => "ENABLED",
-                            Ok(false) => "DISABLED",
-                            Err(_) => "ERROR",
+                            true => "ENABLED",
+                            false => "DISABLED",
                         }
                     } else {
                         "Enable Keplr"
@@ -73,11 +76,12 @@ pub fn KeplrTests() -> impl IntoView {
             <button on:click=get_account >
                 {move || {
                     if let Some(result) = address() {
-                        match result {
-                            Ok(_) => "SUCCESS",
-                            Err(_) => "ERROR",
-                        }
-                    } else { "Get Account" }
+                        result
+                        // match result {
+                        //     Ok(_) => "SUCCESS",
+                        //     Err(_) => "ERROR",
+                        // }
+                    } else { "Get Account".to_string() }
                 } }
             </button>
             <span class="font-mono">"keplrOfflineSigner.getAccounts()"</span>
@@ -101,11 +105,12 @@ pub fn KeplrTests() -> impl IntoView {
             <button on:click=get_viewing_key >
                 {move || {
                     if let Some(result) = viewing_key() {
-                        match result {
-                            Ok(_) => "SUCCESS",
-                            Err(_) => "ERROR",
-                        }
-                    } else { "Get sSCRT Viewing Key" }
+                        result
+                        // match result {
+                            // Ok(_) => "SUCCESS",
+                            // Err(_) => "ERROR",
+                        // }
+                    } else { "Get sSCRT Viewing Key".to_string() }
                 } }
             </button>
             <span class="font-mono">"window.keplr.getSecret20ViewingKey(CHAIN_ID, TOKEN_ADDRESS)"</span>

@@ -1,24 +1,27 @@
 #![allow(unused)]
 
+use rsecret::secret_network_client::CreateQuerierOptions;
+
 // use futures::lock::Mutex;
-use leptos::{html::Dialog, logging::log, *};
-use leptos_router::*;
+use leptos::{html::Dialog, logging::log, prelude::*};
+use leptos_router::components::{Route, Router, Routes, A};
+use leptos_router::StaticSegment;
 use serde::{Deserialize, Serialize};
-use state::MyAccount;
+// use state::MyAccount;
 use std::sync::{Arc, Mutex};
 
 pub mod components;
 pub mod constants;
 // mod demo;
 mod keplr;
-mod secretjs;
+// mod secretjs;
 mod state;
 
 pub use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
 // use demo::{QueryDemo, WebsocketDemo};
 use keplr::KeplrTests;
-use secretjs::SecretJsTests;
-use secretjs::{ClientOptionsBuilder, SecretNetworkClient};
+// use secretjs::SecretJsTests;
+// use secretjs::{ClientOptionsBuilder, SecretNetworkClient};
 use state::GlobalState;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
@@ -34,9 +37,9 @@ use wasm_bindgen::UnwrapThrowExt;
 
 #[component]
 pub fn App(demo: bool) -> impl IntoView {
-    log::debug!("rendering <App/>");
+    log!("rendering <App/>");
 
-    let (demo_mode, _) = create_signal(demo);
+    let (demo_mode, _) = signal(demo);
 
     // TODO - look into saving/loading app state from localStorage
     //      - figure out localStorage interactions
@@ -48,36 +51,37 @@ pub fn App(demo: bool) -> impl IntoView {
     // Passing Signals through Context
     let ctx = GlobalState::new();
     provide_context(ctx);
-    provide_context(MyAccount::new());
+    // provide_context(MyAccount::new());
 
     // let secret = SecretQueryClient::new();
     // provide_context(secret);
 
     let keplr_is_enabled = move || ctx.keplr_enabled.get();
 
-    log::debug!("Creating Clients");
-    let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
+    // log::debug!("Creating Clients");
+    // let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
 
-    let client_options = rsecret::CreateClientOptions {
-        url: GRPC_URL,
-        chain_id: CHAIN_ID,
-        ..Default::default()
-    };
-    let secretrs_master =
-        Arc::new(rsecret::SecretNetworkClient::new(web_client, client_options).unwrap());
+    // let client_options = rsecret::CreateClientOptions {
+    //     url: GRPC_URL,
+    //     chain_id: CHAIN_ID,
+    //     ..Default::default()
+    // };
+    // let secretrs_master =
+    //     Arc::new(rsecret::SecretNetworkClient::new(web_client, client_options).unwrap());
 
-    let secretrs = Arc::clone(&secretrs_master);
-    let get_auth_params_action = create_action(move |_: &()| {
-        let secretrs = Arc::clone(&secretrs);
-        async move {
-            // let secretrs = secretrs.lock().unwrap(); // Lock the Mutex to get mutable access
-            let response = secretrs.query.auth.params().await;
-            match response {
-                Ok(result) => log::debug!("{:#?}", result),
-                Err(status) => log::error!("{}", status),
-            }
-        }
-    });
+    // let secretrs = Arc::clone(&secretrs_master);
+    // let get_auth_params_action = Action::new(move |_: &()| {
+    //     // let secretrs = Arc::clone(&secretrs);
+    //     async move {
+    //         let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
+    //         let auth = rsecret::query::auth::AuthQuerier::new(web_client);
+    //         let response = auth.params().await;
+    //         match response {
+    //             Ok(result) => log::debug!("{:#?}", result),
+    //             Err(status) => log::error!("{}", status),
+    //         }
+    //     }
+    // });
 
     // log::debug!("    Auth");
     // let mut auth_client = AuthQueryClient::new(web_client.clone());
@@ -105,28 +109,32 @@ pub fn App(demo: bool) -> impl IntoView {
     //     }
     // };
 
-    let secretrs = Arc::clone(&secretrs_master);
-    let query_contract_action = create_action(move |_: &()| {
-        let secretrs = Arc::clone(&secretrs);
+    // let secretrs = Arc::clone(&secretrs_master);
+    let query_contract_action = Action::new(move |_: &()| {
+        // let secretrs = Arc::clone(&secretrs);
         async move {
-            // let mut secretrs = secretrs.lock().unwrap(); // Lock the Mutex to get mutable access
+            let client_options = CreateQuerierOptions {
+                url: GRPC_URL,
+                chain_id: CHAIN_ID,
+                encryption_utils: todo!(),
+            };
+            let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
+            let compute = rsecret::query::compute::ComputeQuerier::new(web_client, client_options);
 
             let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852".to_string();
 
-            log::info!("Computing code hash...");
-            let response = secretrs
-                .query
-                .compute
+            log!("Computing code hash...");
+            let response = compute
                 .code_hash_by_contract_address(contract_address.clone())
                 .await;
 
             match response {
-                Ok(ref code_hash) => log::debug!("{}", code_hash),
-                Err(ref error) => log::error!("{}", error),
+                Ok(ref code_hash) => log!("{}", code_hash),
+                Err(ref error) => log!("{}", error),
             }
 
             let code_hash = response.unwrap();
-            log::debug!("code_hash => {}", code_hash);
+            log!("code_hash => {}", code_hash);
 
             let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
 
@@ -135,56 +143,56 @@ pub fn App(demo: bool) -> impl IntoView {
                 key: "amber-rocks".to_string(),
             };
 
-            log::debug!("Querying contract...");
-            let response = secretrs
-                .query
-                .compute
+            log!("Querying contract...");
+            let response = compute
                 .query_secret_contract(contract_address, code_hash, query)
                 .await;
 
             match response {
                 Ok(result) => {
-                    log::debug!("{}", result);
+                    log!("{}", result);
                 }
-                Err(error) => log::error!("{}", error),
+                Err(error) => log!("{}", error),
             }
         }
     });
 
-    // let query_contract_button = move || {
-    //     view! {
-    //             <button
-    //                 on:click=move |_| query_contract_action.dispatch(())
-    //             >"TEST"</button>
-    //     }
-    // };
-
-    let connect_action = create_action(move |_: &()| async move {
-        let address = keplr::get_account().await.unwrap_or_default();
-        let keplr_offline_signer = keplr::get_offline_signer().unwrap();
-        let encryption_utils = keplr::get_enigma_utils(CHAIN_ID);
-        let client_options = secretjs::ClientOptionsBuilder::new()
-            .url(LCD_URL)
-            .chain_id(CHAIN_ID)
-            .encryption_utils(encryption_utils)
-            .wallet(keplr_offline_signer)
-            .wallet_address(address.as_str())
-            .build();
-        let client = SecretNetworkClient::new(&client_options);
-        log::debug!("{:#?}", &client.address());
-        ctx.keplr_enabled.set(true);
-        ctx.my_address.set(client.address());
-
-        address
-    });
-
-    let connect_button = move || {
+    let query_contract_button = move || {
         view! {
                 <button
-                    on:click=move |_| connect_action.dispatch(())
-                >"Connect Ye Wallet"</button>
+                    on:click=move |_| query_contract_action.dispatch(())
+                >"TEST"</button>
         }
     };
+
+    let connect_action = Action::new(move |_: &()| async move {
+        todo!()
+
+        // let address = keplr::get_account().await.unwrap_or_default();
+        // let keplr_offline_signer = keplr::get_offline_signer().unwrap();
+        // let encryption_utils = keplr::get_enigma_utils(CHAIN_ID);
+        // let client_options = secretjs::ClientOptionsBuilder::new()
+        //     .url(LCD_URL)
+        //     .chain_id(CHAIN_ID)
+        //     .encryption_utils(encryption_utils)
+        //     .wallet(keplr_offline_signer)
+        //     .wallet_address(address.as_str())
+        //     .build();
+        // let client = SecretNetworkClient::new(&client_options);
+        // log::debug!("{:#?}", &client.address());
+        // ctx.keplr_enabled.set(true);
+        // ctx.my_address.set(client.address());
+        //
+        // address
+    });
+
+    // let connect_button = move || {
+    //     view! {
+    //             <button
+    //                 on:click=move |_| connect_action.dispatch(())
+    //             >"Connect Ye Wallet"</button>
+    //     }
+    // };
 
     view! {
         <Router>
@@ -193,9 +201,9 @@ pub fn App(demo: bool) -> impl IntoView {
                     <h1>"Hello World"</h1>
                     <Show
                         when=keplr_is_enabled
-                        fallback=connect_button
+                        fallback=query_contract_button
                     >
-                        <p>"Yer Address is "<code>{ctx.my_address}</code></p>
+                        <p>"Yer Address is "<code>{ctx.my_address.get()}</code></p>
                     </Show>
                 </div>
                 <hr/>
@@ -213,24 +221,25 @@ pub fn App(demo: bool) -> impl IntoView {
                 <hr/>
             </header>
             <main>
-                <AnimatedRoutes
-                    intro="slideIn"
-                    outro="fadeOut"
-                    intro_back="slideInBack"
-                    outro_back="fadeOut"
+                <Routes
+                    fallback=|| "This page could not be found."
+                    // intro="slideIn"
+                    // outro="fadeOut"
+                    // intro_back="slideInBack"
+                    // outro_back="fadeOut"
                 >
                     <Route
-                        path="/"
+                        path=StaticSegment("/")
                         view=|| {
                             view! { <Home/> }
                         }
                     />
                     <Route
-                        path="keplr-demo"
+                        path=StaticSegment("keplr-demo")
                         view=|| view! {
                             <KeplrTests/>
                             <hr/>
-                            <SecretJsTests/>
+                            // <SecretJsTests/>
                             <hr/>
                             <h2>"UI Tests"</h2>
                             <Modal/>
@@ -246,7 +255,7 @@ pub fn App(demo: bool) -> impl IntoView {
                     //         <WebsocketDemo/>
                     //     }
                     // />
-                </AnimatedRoutes>
+                </Routes>
             </main>
         </Router>
     }
@@ -277,7 +286,7 @@ fn Home() -> impl IntoView {
 fn Modal(// Signal that will be toggled when the button is clicked.
     // setter: WriteSignal<bool>,
 ) -> impl IntoView {
-    log::debug!("rendering <Modal/>");
+    log!("rendering <Modal/>");
 
     on_cleanup(|| {
         log!("cleaning up <Modal/>");
@@ -293,14 +302,14 @@ fn Modal(// Signal that will be toggled when the button is clicked.
 
     // Example using a GlobalState struct as context
     let ctx = use_context::<GlobalState>().expect("provide global state context");
-    let is_keplr_enabled = move || ctx.keplr_enabled;
-    let my_address = move || ctx.my_address;
+    let is_keplr_enabled = move || ctx.keplr_enabled.read_only();
+    let my_address = move || ctx.my_address.read_only();
 
     // Creating a NodeRef allows using methods on the HtmlElement directly
-    let dialog_ref = create_node_ref::<Dialog>();
+    let dialog_ref = NodeRef::<Dialog>::new();
 
     let open_modal = move |_| {
-        log::debug!("show modal");
+        log!("show modal");
         let node = dialog_ref.get().unwrap();
         node.show_modal().expect("I don't know what I expected");
 
@@ -308,14 +317,14 @@ fn Modal(// Signal that will be toggled when the button is clicked.
         // ctx.keplr_enabled.update(|value| *value = !*value);
     };
     let close_modal = move |_| {
-        log::debug!("close modal");
+        log!("close modal");
         let node = dialog_ref.get().unwrap();
         node.close();
     };
 
     view! {
         <dialog
-            _ref=dialog_ref
+            node_ref=dialog_ref
         >
             <p>"Greetings, one and all!"</p>
             <p>"Connected?: "{is_keplr_enabled}</p>
