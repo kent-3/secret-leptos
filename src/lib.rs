@@ -1,4 +1,4 @@
-#![allow(unused)]
+// #![allow(unused)]
 
 use rsecret::secret_network_client::CreateQuerierOptions;
 
@@ -32,8 +32,6 @@ use base64::prelude::{Engine, BASE64_STANDARD};
 //     EncryptionUtils,
 // };
 // use state::SecretQueryClient;
-use thiserror::Error;
-use wasm_bindgen::UnwrapThrowExt;
 
 #[component]
 pub fn App(demo: bool) -> impl IntoView {
@@ -213,7 +211,7 @@ pub fn App(demo: bool) -> impl IntoView {
                         when=demo_mode
                         fallback=|| ()
                     >
-                        <A href="keplr-demo" >"Keplr"</A>
+                        <A href="keplr-tests" >"Keplr"</A>
                         // <A href="query-demo" >"Query"</A>
                         // <A href="websocket-demo" >"Websocket"</A>
                     </Show>
@@ -235,7 +233,7 @@ pub fn App(demo: bool) -> impl IntoView {
                         }
                     />
                     <Route
-                        path=StaticSegment("keplr-demo")
+                        path=StaticSegment("keplr-tests")
                         view=|| view! {
                             <KeplrTests/>
                             <hr/>

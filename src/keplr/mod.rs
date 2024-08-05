@@ -1,41 +1,122 @@
-use crate::CHAIN_ID;
-use js_sys::Promise;
 use leptos::{error::Result, logging::log, *};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::JsFuture;
 
 mod tests;
 pub use tests::KeplrTests;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = ["window", "keplr"])]
-    pub fn enable(chain_id: &str) -> Promise;
+use js_sys::{JsString, Uint8Array};
 
-    #[wasm_bindgen(js_namespace = ["window", "keplr"], js_name = getOfflineSignerOnlyAmino)]
+#[wasm_bindgen(js_namespace = ["window", "keplr"])]
+extern "C" {
+    #[wasm_bindgen(js_namespace = window, js_name = keplr)]
+    pub static KEPLR: JsValue;
+
+    pub type KeplrOfflineSigner;
+    pub type JsEnigmaUtils;
+
+    #[wasm_bindgen(catch)]
+    pub async fn enable(chain_id: &str) -> Result<(), JsValue>;
+
+    #[wasm_bindgen]
+    pub fn disable(chain_id: &str);
+
+    #[wasm_bindgen(js_name = disable)]
+    /// Disable all chains for this origin (website).
+    pub fn disable_origin();
+
+    #[wasm_bindgen(catch, js_name = experimentalSuggestChain)]
+    pub async fn suggest_chain(chainInfo: JsValue) -> Result<(), JsValue>;
+
+    #[wasm_bindgen(js_name = getChainInfoWithoutEndpoints)]
+    pub async fn get_chain_info(chain_id: &str) -> JsValue;
+
+    #[wasm_bindgen(js_name = getKey)]
+    pub async fn get_key(chain_id: &str) -> JsValue;
+
+    #[wasm_bindgen(js_name = getOfflineSigner)]
+    pub fn get_offline_signer(chain_id: &str) -> KeplrOfflineSigner;
+
+    #[wasm_bindgen(js_name = getOfflineSignerAuto)]
+    pub fn get_offline_signer_auto(chain_id: &str) -> KeplrOfflineSigner;
+
+    #[wasm_bindgen(js_name = getOfflineSignerOnlyAmino)]
     pub fn get_offline_signer_only_amino(chain_id: &str) -> KeplrOfflineSigner;
 
-    #[wasm_bindgen(js_namespace = ["window", "keplr"], js_name = getSecret20ViewingKey)]
-    pub fn get_secret_20_viewing_key(chain_id: &str, contract_address: &str) -> Promise; // Or more specific type if known
-}
+    #[wasm_bindgen(js_name = getEnigmaUtils)]
+    pub fn get_enigma_utils(chain_id: &str) -> JsEnigmaUtils;
 
-#[wasm_bindgen]
-extern "C" {
-    #[derive(Debug, Clone)]
-    pub type KeplrOfflineSigner;
+    #[wasm_bindgen(catch, js_name = sendTx)]
+    pub async fn sendTx(chainId: &str, tx: &[u8], mode: &str) -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(method, structural, js_name = getAccounts)]
-    pub fn get_accounts(this: &KeplrOfflineSigner) -> Promise;
-}
+    // KeplrOfflineSigner methods
 
-#[wasm_bindgen]
-extern "C" {
-    #[derive(Debug)]
-    pub type EnigmaUtils;
+    #[wasm_bindgen(method, getter, js_name = chainId)]
+    pub fn chain_id(this: &KeplrOfflineSigner) -> JsValue;
 
-    #[wasm_bindgen(js_namespace = ["window", "keplr"], js_name = getEnigmaUtils)]
-    pub fn get_enigma_utils(chain_id: &str) -> EnigmaUtils;
+    #[wasm_bindgen(method, js_name = getAccounts)]
+    pub async fn get_accounts(this: &KeplrOfflineSigner) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = signAmino)]
+    pub async fn sign_amino(
+        this: &KeplrOfflineSigner,
+        signerAddress: JsString,
+        signDoc: JsValue, // StdSignDoc
+    ) -> JsValue; // AminoSignResponse
+
+    #[wasm_bindgen(method, js_name = signDirect)]
+    pub async fn sign_direct(
+        this: &KeplrOfflineSigner,
+        signerAddress: JsString,
+        signDoc: JsValue, // SignDoc
+    ) -> JsValue; // DirectSignResponse
+
+    // EnigmaUtils methods (all of these return Uint8Array)
+
+    #[wasm_bindgen(method, getter, js_name = chainId)]
+    pub fn chain_id(this: &JsEnigmaUtils) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = decrypt)]
+    pub async fn decrypt(
+        this: &JsEnigmaUtils,
+        ciphertext: Uint8Array,
+        nonce: Uint8Array,
+    ) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = encrypt)]
+    pub async fn encrypt(
+        this: &JsEnigmaUtils,
+        contract_code_hash: JsString,
+        msg: JsValue,
+    ) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = getPubkey)]
+    pub async fn get_pubkey(this: &JsEnigmaUtils) -> JsValue;
+
+    #[wasm_bindgen(method, js_name = getTxEncryptionKey)]
+    pub async fn get_tx_encryption_key(this: &JsEnigmaUtils, nonce: Uint8Array) -> JsValue;
+
+    // Enigma functions (all of these return Uint8Array)
+
+    #[wasm_bindgen(js_name = enigmaEncrypt)]
+    pub async fn enigma_encrypt(chain_id: &str, code_hash: &str, msg: JsValue) -> JsValue;
+
+    #[wasm_bindgen(js_name = enigmaDecrypt)]
+    pub async fn enigma_decrypt(chain_id: &str, ciphertext: &[u8], nonce: &[u8]) -> JsValue;
+
+    #[wasm_bindgen(js_name = getEnigmaPubKey)]
+    pub async fn get_enigma_pub_key(chain_id: &str) -> JsValue;
+
+    #[wasm_bindgen(js_name = getEnigmaTxEncryptionKey)]
+    pub async fn get_enigma_tx_encryption_key(chain_id: &str, nonce: &[u8]) -> JsValue;
+
+    // other Secret functions
+
+    #[wasm_bindgen(js_name = suggestToken)]
+    pub async fn suggest_token(chainId: &str, contract_address: &str);
+
+    #[wasm_bindgen(js_name = getSecret20ViewingKey)]
+    pub fn get_secret_20_viewing_key(chain_id: &str, contract_address: &str) -> String;
 }
 
 #[derive(Deserialize, Debug)]
@@ -45,74 +126,20 @@ pub struct Account {
     pub pubkey: Vec<u8>,
 }
 
-pub async fn enable_keplr() -> bool {
-    log!("Enabling Keplr...");
-
-    let enable_promise = enable(CHAIN_ID);
-    let enable_js_value = JsFuture::from(enable_promise).await;
-
-    match enable_js_value {
-        Ok(js_value) => {
-            log!("Ok: {js_value:#?}");
-            true
-        }
-        Err(js_error) => {
-            log!("Err: {js_error:#?}");
-            false
-        }
-    }
-}
-
-pub fn get_offline_signer() -> Result<KeplrOfflineSigner> {
-    let signer = get_offline_signer_only_amino(CHAIN_ID);
-    log!("{:#?}", signer);
-
-    Ok(signer)
-}
-
-pub async fn get_viewing_key(token_address: String) -> String {
-    log!("Trying to get viewing key...");
-
-    let key_promise = get_secret_20_viewing_key(CHAIN_ID, &token_address);
-    let key_js_value = JsFuture::from(key_promise).await;
-
-    match key_js_value {
-        Ok(js_value) => {
-            log!("Ok: {js_value:#?}");
-            let key = js_value.as_string().unwrap_or_default();
-            key
-        }
-        Err(js_error) => {
-            log!("Err: {js_error:#?}");
-            let error = format!("{js_error:#?}");
-            error
-        }
-    }
-}
-
-pub async fn get_account() -> String {
-    let signer = get_offline_signer_only_amino(CHAIN_ID);
-
-    let accounts_promise = signer.get_accounts();
-    let accounts_js_value = JsFuture::from(accounts_promise).await;
-
-    match accounts_js_value {
-        Ok(js_value) => {
-            log!("Ok: {js_value:#?}");
-            let mut accounts: Vec<Account> = ::serde_wasm_bindgen::from_value(js_value).unwrap();
-            let address = accounts.remove(0).address;
-            log!("address: {:#?}", address);
-            address
-        }
-        Err(js_error) => {
-            log!("Err: {js_error:#?}");
-            "Keplr is not enabled!".to_string()
-        }
-    }
-}
-
-async fn keplr_get_enigma_utils() -> Result<()> {
-    let enigma_utils = get_enigma_utils(CHAIN_ID);
-    log!("{:#?}", enigma_utils);
-    Ok(())
-}
+// pub async fn enable_keplr() -> bool {
+//     log!("Enabling Keplr...");
+//
+//     let enable_result = enable(CHAIN_ID).await;
+//     // let enable_js_value = JsFuture::from(enable_promise).await;
+//
+//     match enable_result {
+//         Ok(js_value) => {
+//             log!("Ok: {js_value:#?}");
+//             true
+//         }
+//         Err(js_error) => {
+//             log!("Err: {js_error:#?}");
+//             false
+//         }
+//     }
+// }
