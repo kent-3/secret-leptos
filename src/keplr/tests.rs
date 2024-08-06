@@ -1,6 +1,7 @@
 use ::keplr::*;
 use js_sys::Error;
 use keplr_sys::disable;
+use leptos::html::Dialog;
 use leptos::prelude::*;
 use leptos::web_sys::console;
 
@@ -28,7 +29,7 @@ async fn enable_keplr(chain_id: &str) -> Result<(), String> {
 
 // this method seems dumb since `get_key` returns the same and more
 async fn get_account(chain_id: &str) -> String {
-    let signer = Keplr::get_offline_signer(chain_id);
+    let signer = Keplr::get_offline_signer_only_amino(chain_id);
     let accounts = signer.get_accounts().await;
     let accounts = js_sys::Array::from(&accounts);
     let account = accounts.get(0);
@@ -65,8 +66,22 @@ async fn get_secret_20_viewing_key(chain_id: &str, contract_address: String) -> 
 
 #[component]
 pub fn KeplrTests() -> impl IntoView {
+    let dialog_ref = NodeRef::<Dialog>::new();
+
     let enable_keplr_action: Action<(), std::result::Result<(), String>, SyncStorage> =
-        Action::new_unsync(|_: &()| enable_keplr("secret-4"));
+        Action::new_unsync(move |_: &()| async move {
+            if let Some(dialog) = dialog_ref.get_untracked() {
+                let _ = dialog.show_modal();
+            }
+
+            let result = enable_keplr("secret-4").await;
+
+            if let Some(dialog) = dialog_ref.get_untracked() {
+                dialog.close();
+            }
+
+            result
+        });
     let get_account_action: Action<(), String, SyncStorage> =
         Action::new_unsync(|_: &()| get_account("secret-4"));
     let get_key_action: Action<(), KeyInfo, SyncStorage> =
@@ -130,13 +145,13 @@ pub fn KeplrTests() -> impl IntoView {
         </div>
 
         // Example of how to show a dialog while an action is pending
-        <Show
-            when=pending_enable
-            fallback=|| ()
-        >
-            <dialog open>
+        // <Show
+        //     when=pending_enable
+        //     fallback=|| ()
+        // >
+            <dialog node_ref=dialog_ref >
                 <p> "Waiting for Approval..." </p>
             </dialog>
-        </Show>
+        // </Show>
     }
 }
