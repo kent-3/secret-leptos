@@ -211,7 +211,7 @@ pub fn App(demo: bool) -> impl IntoView {
                         when=demo_mode
                         fallback=|| ()
                     >
-                        <A href="keplr-tests" >"Keplr"</A>
+                        <A href="keplr" >"Keplr"</A>
                         // <A href="query-demo" >"Query"</A>
                         // <A href="websocket-demo" >"Websocket"</A>
                     </Show>
@@ -228,20 +228,11 @@ pub fn App(demo: bool) -> impl IntoView {
                 >
                     <Route
                         path=StaticSegment("/")
-                        view=|| {
-                            view! { <Home/> }
-                        }
+                        view=|| view! { <Home/> }
                     />
                     <Route
-                        path=StaticSegment("keplr-tests")
-                        view=|| view! {
-                            <KeplrTests/>
-                            <hr/>
-                            // <SecretJsTests/>
-                            <hr/>
-                            <h2>"UI Tests"</h2>
-                            <Modal/>
-                        }
+                        path=StaticSegment("keplr")
+                        view=|| view! { <KeplrTests/> }
                     />
                     // <Route
                     //     path="query-demo"
