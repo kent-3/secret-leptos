@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "media", // or 'class' if you want to toggle with a class
   content: {
     files: ["*.html", "./src/**/*.rs"],
   },
@@ -7,6 +8,7 @@ module.exports = {
     extend: {
       animation: {
         "ping-once": "ping 1s cubic-bezier(0, 0, 0.2, 1) 1",
+        "spin-slow": "spin 3s linear infinite",
       },
       transitionTimingFunction: {
         standard: "cubic-bezier(0.2, 0, 0, 1)",

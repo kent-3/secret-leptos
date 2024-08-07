@@ -7,17 +7,24 @@ use rsecret::SecretNetworkClient;
 // Still deciding what else to include here.
 #[derive(Copy, Clone, Debug)]
 pub struct GlobalState {
-    pub keplr_enabled: RwSignal<bool, LocalStorage>,
-    pub my_address: RwSignal<String, LocalStorage>,
+    pub keplr_enabled: RwSignal<bool, SyncStorage>,
+    pub my_address: RwSignal<String, SyncStorage>,
 }
 
 impl GlobalState {
     pub fn new() -> Self {
         Self {
-            keplr_enabled: RwSignal::new_local(false),
-            my_address: RwSignal::new_local("unknown".to_string()),
+            keplr_enabled: RwSignal::new(false),
+            my_address: RwSignal::new("unknown".to_string()),
         }
     }
+}
+
+#[derive(Copy, Clone)]
+pub struct KeplrState {
+    pub enable_keplr_action: Action<(), bool>,
+    pub is_keplr_enabled: ReadSignal<Option<bool>>,
+    // pub my_address: ReadSignal<String>,
 }
 
 // not sure this a good approach...

@@ -1,3 +1,4 @@
+use crate::state::KeplrState;
 use crate::CHAIN_ID;
 use ::keplr::*;
 use js_sys::Error;
@@ -6,7 +7,7 @@ use leptos::html::Dialog;
 use leptos::prelude::*;
 use leptos::web_sys::console;
 
-async fn enable_keplr(chain_id: &str) -> bool {
+pub async fn enable_keplr(chain_id: &str) -> bool {
     log!("Trying to enable Keplr...");
 
     let result = Keplr::enable(chain_id).await.map_err(|js_value| {
@@ -18,11 +19,23 @@ async fn enable_keplr(chain_id: &str) -> bool {
     });
 
     match &result {
-        Ok(_) => log!("Keplr is enabled."),
-        Err(ref e) => log!("{e}"),
+        Ok(_) => {
+            log!("Keplr is enabled.");
+            save_to_local_storage("keplr_enabled", true);
+        }
+        Err(ref e) => {
+            log!("{e}");
+            save_to_local_storage("keplr_enabled", false);
+        }
     }
 
     result.is_ok()
+}
+
+fn save_to_local_storage(key: &str, value: bool) {
+    if let Some(storage) = window().local_storage().unwrap() {
+        let _ = storage.set_item(key, &value.to_string());
+    }
 }
 
 // this method seems dumb since `get_key` returns the same and more
@@ -100,12 +113,16 @@ pub fn KeplrTests() -> impl IntoView {
         log!("cleaning up <KeplrTests/>");
     });
 
+    let ctx = use_context::<KeplrState>().expect("missing keplr state context");
+    let is_keplr_enabled = ctx.is_keplr_enabled;
+    let keplr_enabled = move || is_keplr_enabled.get();
+
     let dialog_ref = NodeRef::<Dialog>::new();
 
-    let enable_keplr_action: Action<(), bool, SyncStorage> =
-        Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
-    let get_account_action: Action<(), Account, SyncStorage> =
-        Action::new_unsync(|_: &()| get_account(CHAIN_ID));
+    // let enable_keplr_action: Action<(), bool, SyncStorage> =
+    //     Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
+    // let get_account_action: Action<(), Account, SyncStorage> =
+    //     Action::new_unsync(|_: &()| get_account(CHAIN_ID));
     let get_key_action: Action<(), KeyInfo, SyncStorage> =
         Action::new_unsync(|_: &()| get_key(CHAIN_ID));
     let get_viewing_key_action: Action<String, String, LocalStorage> =
@@ -120,8 +137,8 @@ pub fn KeplrTests() -> impl IntoView {
     let suggest_chain_action: Action<(), (), SyncStorage> =
         Action::new_unsync(move |_: &()| suggest());
 
-    let enable_keplr = move |_| enable_keplr_action.dispatch(());
-    let get_account = move |_| get_account_action.dispatch(());
+    let enable_keplr = move |_| ctx.enable_keplr_action.dispatch(());
+    // let get_account = move |_| get_account_action.dispatch(());
     let get_key = move |_| get_key_action.dispatch(());
     let get_viewing_key = move |_| {
         get_viewing_key_action.dispatch("secret1vkq022x4q8t8kx9de3r84u669l65xnwf2lg3e6".to_string())
@@ -137,7 +154,7 @@ pub fn KeplrTests() -> impl IntoView {
     };
 
     // whether the call is pending
-    let pending_enable = enable_keplr_action.pending();
+    let pending_enable = ctx.enable_keplr_action.pending();
 
     Effect::new(move |_| {
         if pending_enable.get() {
@@ -150,44 +167,46 @@ pub fn KeplrTests() -> impl IntoView {
     });
 
     // the most recent returned result
-    let account = get_account_action.value();
+    // let account = get_account_action.value();
     let key = get_key_action.value();
     let viewing_key = get_viewing_key_action.value();
 
     view! {
         <h2>"Keplr Tests"</h2>
 
-        <div class="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2">
+        { move || if let Some(status) = keplr_enabled() { if status {"enabled"} else {"disabled"} } else { "error" } }
+
+        <div class="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 overflow-auto items-center ">
 
             <button on:click=enable_keplr > "Enable" </button>
-            <code class="font-mono max-w-max"> "window.keplr.enable(CHAIN_ID)" </code>
+            <code class="font-mono max-w-max"> "enable(CHAIN_ID)" </code>
 
             <button on:click=suggest_chain > "Suggest Chain" </button>
-            <code class="font-mono max-w-max"> "window.keplr.experimentalSuggestChain(...)" </code>
+            <code class="font-mono max-w-max"> "experimentalSuggestChain(...)" </code>
 
-            <button on:click=get_account > "Get Account" </button>
-            <code class="font-mono max-w-max"> "keplrOfflineSigner.getAccounts(CHAIN_ID)"</code>
+            // <button on:click=get_account > "Get Account" </button>
+            // <code class="font-mono max-w-max"> "keplrOfflineSigner.getAccounts(CHAIN_ID)"</code>
 
             <button on:click=get_key > "Get Key" </button>
-            <code class="font-mono max-w-max"> "window.keplr.getKey(CHAIN_ID)"</code>
+            <code class="font-mono max-w-max"> "getKey(CHAIN_ID)"</code>
 
             <button on:click=get_enigma_utils > "Get Enigma Utils" </button>
-            <code class="font-mono max-w-max"> "window.keplr.getEnigmaUtils(CHAIN_ID)"</code>
+            <code class="font-mono max-w-max"> "getEnigmaUtils(CHAIN_ID)"</code>
 
             <button on:click=suggest_token > "Suggest Token (AMBER)" </button>
-            <code class="font-mono max-w-max"> "window.keplr.suggestToken(CHAIN_ID, contract_address)"</code>
+            <code class="font-mono max-w-max"> "suggestToken(CHAIN_ID, contract_address)"</code>
 
             <button on:click=get_viewing_key > "Get Viewing Key (USDC)" </button>
-            <code class="font-mono max-w-max"> "window.keplr.getSecret20ViewingKey(CHAIN_ID, contract_address)"</code>
+            <code class="font-mono max-w-max"> "getSecret20ViewingKey(CHAIN_ID, contract_address)"</code>
 
             <button on:click=disable_keplr > "Disable" </button>
-            <code class="font-mono max-w-max"> "window.keplr.disable(CHAIN_ID)" </code>
+            <code class="font-mono max-w-max"> "disable(CHAIN_ID)" </code>
 
         </div>
 
-        <pre> { move || account.get().and_then(|value| Some(format!("{value:#?}"))) } </pre>
-        <pre> { move || key.get().and_then(|value| Some(format!("{value:#?}"))) } </pre>
-        <pre> { move || viewing_key.get().and_then(|value| Some(format!("Viewing Key: {value:#?}"))) } </pre>
+        // <pre class="overflow-x-auto"> { move || account.get().and_then(|value| Some(format!("{value:#?}"))) } </pre>
+        <pre class="overflow-x-auto"> { move || key.get().and_then(|value| Some(format!("{value:#?}"))) } </pre>
+        <pre class="overflow-x-auto"> { move || viewing_key.get().and_then(|value| Some(format!("Viewing Key: {value:#?}"))) } </pre>
 
         <dialog node_ref=dialog_ref>
             <p> "Waiting for Approval..." </p>

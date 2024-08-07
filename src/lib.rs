@@ -6,14 +6,15 @@ use leptos_router::components::{Route, Router, Routes, A};
 use leptos_router::StaticSegment;
 use serde::{Deserialize, Serialize};
 
-pub mod components;
-pub mod constants;
+mod components;
+mod constants;
 mod keplr;
 mod state;
 
+use components::Spinner2;
 pub use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
 use keplr::KeplrTests;
-use state::GlobalState;
+use state::{GlobalState, KeplrState};
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -23,11 +24,42 @@ pub fn App() -> impl IntoView {
     let ctx = GlobalState::new();
     provide_context(ctx);
 
+    // TODO: read from local storage if keplr is enabled
+
+    use crate::keplr::enable_keplr;
+    let enable_keplr_action: Action<(), bool, SyncStorage> =
+        Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
+    let enable_keplr = move |_| enable_keplr_action.dispatch(());
+    let pending_enable = enable_keplr_action.pending();
+    let is_keplr_enabled = enable_keplr_action.value().read_only();
+
+    let dialog_ref = NodeRef::<Dialog>::new();
+    Effect::new(move |_| {
+        if pending_enable.get() {
+            let node = dialog_ref.get().expect("huh");
+            let _ = node.show_modal();
+        } else {
+            let node = dialog_ref.get().expect("huh");
+            node.close();
+        }
+    });
+
+    let keplr_ctx = KeplrState {
+        enable_keplr_action,
+        is_keplr_enabled,
+    };
+    provide_context(keplr_ctx);
+
     view! {
         <Router>
             <header>
                 <div class="flex justify-between items-center">
                     <h1>"Hello World"</h1>
+                    // <button class="btn inline-flex items-center" disabled=pending_enable>
+                    //     <Spinner2/ >
+                    //     Processing...
+                    // </button>
+                    <button on:click=enable_keplr disabled=pending_enable> Connect Wallet </button>
                 </div>
                 <hr/>
                 <nav>
@@ -36,7 +68,7 @@ pub fn App() -> impl IntoView {
                 </nav>
                 <hr/>
             </header>
-            <main>
+            <main class="outline outline-1 outline-offset-4 outline-neutral-500">
                 <Routes fallback=|| "This page could not be found." >
                     <Route
                         path=StaticSegment("/")
@@ -48,29 +80,16 @@ pub fn App() -> impl IntoView {
                     />
                 </Routes>
             </main>
+            <dialog node_ref=dialog_ref>
+                <p> "Waiting for Approval..." </p>
+            </dialog>
         </Router>
     }
 }
 
 #[component]
 fn Home() -> impl IntoView {
-    view! {
-        <p>
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam ac tincidunt nisl, nec faucibus arcu. Nullam venenatis mi justo, eget consequat eros iaculis nec. Nullam sed purus sem. Duis ac aliquam enim. Curabitur vitae urna lectus. Sed tincidunt quis est non consequat. Nunc pellentesque maximus eros eget rutrum. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nam in massa pulvinar, varius massa quis, bibendum diam. Etiam non mi faucibus, pretium lacus eget, dignissim risus."
-        </p>
-        <p>
-            "Phasellus in fermentum nisl, eget luctus urna. Nullam sed nulla urna. Morbi consequat, ante eget tincidunt faucibus, tortor purus elementum nulla, quis dignissim dui justo vel orci. Duis placerat neque sit amet velit consequat hendrerit. Proin arcu mauris, vestibulum ac enim sed, feugiat imperdiet turpis. Mauris id faucibus massa. In id scelerisque sapien, eu interdum metus. Quisque dui orci, viverra at sodales commodo, pellentesque a ipsum. In id pretium enim. Vestibulum arcu massa, blandit a condimentum ac, semper et sapien. Fusce posuere erat urna. Proin dictum nisi nec tortor mattis pretium at quis risus. Sed vel pellentesque orci."
-        </p>
-        <p>
-            "Morbi non vestibulum magna, a iaculis eros. Donec eget quam nec dui vulputate efficitur. Morbi id ipsum suscipit, rhoncus nibh ut, cursus erat. Donec nec vestibulum risus, ultrices condimentum libero. Fusce vel nibh non eros viverra rutrum eu eu neque. Vestibulum vitae dignissim felis. Pellentesque a venenatis massa, sit amet molestie enim. Ut accumsan at sapien at tristique. Ut convallis, eros id venenatis euismod, lacus metus iaculis turpis, a mattis lorem elit sodales magna. Integer ullamcorper sodales erat. Vestibulum malesuada ullamcorper ex at ornare."
-        </p>
-        <p>
-            "Sed sit amet egestas tortor, eget rutrum lorem. Duis et enim semper, molestie turpis a, scelerisque quam. Proin nec mi felis. Aliquam tincidunt dui purus, eu semper metus lobortis eu. Etiam dapibus dolor lacus, non molestie purus ultricies at. Quisque hendrerit, tellus nec pretium viverra, nisi metus convallis sapien, at lobortis turpis orci vitae lectus. Ut purus dui, convallis eu interdum sit amet, malesuada ac sapien. Etiam tristique luctus arcu et euismod. Donec sodales lacus eu eros pretium pretium non nec ligula. Integer cursus est et tellus iaculis laoreet. Phasellus eget sapien orci."
-        </p>
-        <p>
-            "Duis sed cursus leo. Proin leo erat, viverra sed rutrum eu, sagittis a arcu. Phasellus in dolor scelerisque, elementum enim id, ultrices est. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Duis ullamcorper urna ac massa condimentum facilisis. Proin non ex in est dictum dapibus. Maecenas consequat auctor enim quis sollicitudin. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Maecenas cursus sagittis augue et tempor. Nam eget laoreet mauris."
-        </p>
-    }
+    view! {}
 }
 
 #[component]
