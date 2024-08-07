@@ -1,17 +1,14 @@
+use crate::CHAIN_ID;
 use ::keplr::*;
 use js_sys::Error;
 use keplr_sys::disable;
+use leptos::html::Dialog;
 use leptos::prelude::*;
 use leptos::web_sys::console;
 
-fn alert(msg: impl AsRef<str>) {
-    let _ = window().alert_with_message(msg.as_ref());
-}
-
-// if keplr is enabled, this will return Ok(())
-// otherwise, this will return Err(String) with the reason for the error
-async fn enable_keplr(chain_id: &str) -> Result<(), String> {
+async fn enable_keplr(chain_id: &str) -> bool {
     log!("Trying to enable Keplr...");
+
     let result = Keplr::enable(chain_id).await.map_err(|js_value| {
         let error = Error::from(js_value)
             .message()
@@ -19,11 +16,13 @@ async fn enable_keplr(chain_id: &str) -> Result<(), String> {
             .unwrap_or("unknown error".to_string());
         error
     });
-    match result {
+
+    match &result {
         Ok(_) => log!("Keplr is enabled."),
-        Err(ref e) => error!("{e}"),
+        Err(ref e) => log!("{e}"),
     }
-    result
+
+    result.is_ok()
 }
 
 // this method seems dumb since `get_key` returns the same and more
@@ -50,7 +49,7 @@ async fn get_key(chain_id: &str) -> KeyInfo {
 
     match result {
         Ok(ref key_info) => log!("{key_info:#?}"),
-        Err(ref e) => error!("{e}"),
+        Err(ref e) => log!("{e}"),
     }
 
     result.unwrap_or_default()
@@ -95,19 +94,27 @@ async fn suggest_token(chain_id: &str, contract_address: &str) {
 
 #[component]
 pub fn KeplrTests() -> impl IntoView {
-    let enable_keplr_action: Action<(), std::result::Result<(), String>, SyncStorage> =
-        Action::new_unsync(|_: &()| enable_keplr("secret-4"));
+    log!("rendering <KeplrTests/>");
+
+    on_cleanup(|| {
+        log!("cleaning up <KeplrTests/>");
+    });
+
+    let dialog_ref = NodeRef::<Dialog>::new();
+
+    let enable_keplr_action: Action<(), bool, SyncStorage> =
+        Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
     let get_account_action: Action<(), Account, SyncStorage> =
-        Action::new_unsync(|_: &()| get_account("secret-4"));
+        Action::new_unsync(|_: &()| get_account(CHAIN_ID));
     let get_key_action: Action<(), KeyInfo, SyncStorage> =
-        Action::new_unsync(|_: &()| get_key("secret-4"));
+        Action::new_unsync(|_: &()| get_key(CHAIN_ID));
     let get_viewing_key_action: Action<String, String, LocalStorage> =
         Action::new_unsync(|input: &String| {
             let token_address = input.clone();
-            get_secret_20_viewing_key("secret-4", token_address)
+            get_secret_20_viewing_key(CHAIN_ID, token_address)
         });
     let suggest_token_action: Action<(), (), SyncStorage> = Action::new_unsync(move |_: &()| {
-        suggest_token("secret-4", "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852")
+        suggest_token(CHAIN_ID, "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852")
     });
 
     let suggest_chain_action: Action<(), (), SyncStorage> =
@@ -123,14 +130,24 @@ pub fn KeplrTests() -> impl IntoView {
     let suggest_chain = move |_| suggest_chain_action.dispatch_local(());
 
     // non-Actions
-    let get_enigma_utils = move |_| get_enigma_utils("secret-4");
+    let get_enigma_utils = move |_| get_enigma_utils(CHAIN_ID);
     let disable_keplr = move |_| {
-        disable("secret-4");
+        disable(CHAIN_ID);
         log!("Keplr Disabled")
     };
 
     // whether the call is pending
     let pending_enable = enable_keplr_action.pending();
+
+    Effect::new(move |_| {
+        if pending_enable.get() {
+            let node = dialog_ref.get().expect("huh");
+            let _ = node.show_modal();
+        } else {
+            let node = dialog_ref.get().expect("huh");
+            node.close();
+        }
+    });
 
     // the most recent returned result
     let account = get_account_action.value();
@@ -172,60 +189,51 @@ pub fn KeplrTests() -> impl IntoView {
         <pre> { move || key.get().and_then(|value| Some(format!("{value:#?}"))) } </pre>
         <pre> { move || viewing_key.get().and_then(|value| Some(format!("Viewing Key: {value:#?}"))) } </pre>
 
-        // Example of how to show a dialog while an action is pending
-        // NOTE: You only get the dialog::backdrop when you call `show_modal()` on the dialog node
-        // toggling visibility this way won't have a backdrop
-        <Show
-            when=pending_enable
-            fallback=|| ()
-        >
-            <dialog open>
-                <p> "Waiting for Approval..." </p>
-            </dialog>
-        </Show>
+        <dialog node_ref=dialog_ref>
+            <p> "Waiting for Approval..." </p>
+        </dialog>
     }
 }
 
 use ::keplr::suggest_chain_types::*;
-use wasm_bindgen::UnwrapThrowExt;
 
 pub async fn suggest() {
     let chain_info = SuggestingChainInfo {
-        chain_id: "mychain-1".to_string(),
-        chain_name: "my new chain".to_string(),
-        rpc: "http://123.456.789.012:26657".to_string(),
-        rest: "http://123.456.789.012:1317".to_string(),
-        bip44: Bip44 { coin_type: 118 },
+        chain_id: "secretdev-1".to_string(),
+        chain_name: "localsecret".to_string(),
+        rpc: "http://127.0.0.1:26657".to_string(),
+        rest: "http://127.0.0.1:1317".to_string(),
+        bip44: Bip44 { coin_type: 529 },
         bech32_config: Bech32Config {
-            bech32_prefix_acc_addr: "cosmos".to_string(),
-            bech32_prefix_acc_pub: "cosmospub".to_string(),
-            bech32_prefix_val_addr: "cosmosvaloper".to_string(),
-            bech32_prefix_val_pub: "cosmosvaloperpub".to_string(),
-            bech32_prefix_cons_addr: "cosmosvalcons".to_string(),
-            bech32_prefix_cons_pub: "cosmosvalconspub".to_string(),
+            bech32_prefix_acc_addr: "secret".to_string(),
+            bech32_prefix_acc_pub: "secretpub".to_string(),
+            bech32_prefix_val_addr: "secretvaloper".to_string(),
+            bech32_prefix_val_pub: "secretvaloperpub".to_string(),
+            bech32_prefix_cons_addr: "secretvalcons".to_string(),
+            bech32_prefix_cons_pub: "secretvalconspub".to_string(),
         },
         currencies: vec![Currency {
-            coin_denom: "ATOM".to_string(),
-            coin_minimal_denom: "uatom".to_string(),
+            coin_denom: "SCRT".to_string(),
+            coin_minimal_denom: "uscrt".to_string(),
             coin_decimals: 6,
-            coin_gecko_id: "cosmos".to_string(),
+            coin_gecko_id: "secret".to_string(),
         }],
         fee_currencies: vec![FeeCurrency {
-            coin_denom: "ATOM".to_string(),
-            coin_minimal_denom: "uatom".to_string(),
+            coin_denom: "SCRT".to_string(),
+            coin_minimal_denom: "uscrt".to_string(),
             coin_decimals: 6,
-            coin_gecko_id: "cosmos".to_string(),
+            coin_gecko_id: "secret".to_string(),
             gas_price_step: GasPriceStep {
-                low: 0.01,
-                average: 0.025,
-                high: 0.04,
+                low: 0.1,
+                average: 0.25,
+                high: 0.5,
             },
         }],
         stake_currency: Currency {
-            coin_denom: "ATOM".to_string(),
-            coin_minimal_denom: "uatom".to_string(),
+            coin_denom: "SCRT".to_string(),
+            coin_minimal_denom: "uscrt".to_string(),
             coin_decimals: 6,
-            coin_gecko_id: "cosmos".to_string(),
+            coin_gecko_id: "secret".to_string(),
         },
     };
 

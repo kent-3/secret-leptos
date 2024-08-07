@@ -19,6 +19,5 @@ fn main() {
         &JsValue::from_bool(true),
     );
 
-    // TODO - figure out how to set 'demo' as env var
-    mount_to_body(|| view! { <App demo=true / > });
+    mount_to_body(|| view! { <App/> });
 }
