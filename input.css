@@ -34,13 +34,60 @@ code {
   border-radius: 0.25rem;
 }
 
-dialog::backdrop {
-  backdrop-filter: blur(2px);
+/*   Open state of the dialog  */
+dialog[open] {
+  opacity: 1;
+  transform: scale(1);
+  transition: all 0.3s ease-out allow-discrete;
 }
+
+/*   Closed state of the dialog   */
+dialog {
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.3s ease-out allow-discrete;
+}
+
+/*   Before-open state  */
+/* Needs to be after the previous dialog[open] rule to take effect,
+    as the specificity is the same */
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+/* Transition the :backdrop when the dialog modal is promoted to the top layer */
+dialog::backdrop {
+  background-color: rgb(0 0 0 / 0%);
+  transition: all 0.3s ease allow-discrete;
+}
+
+dialog[open]::backdrop {
+  backdrop-filter: blur(8px);
+  background-color: rgb(0 0 0 / 25%);
+  transition: all 0.7s ease allow-discrete;
+}
+
+/* This starting-style rule cannot be nested inside the above selector
+because the nesting selector cannot represent pseudo-elements. */
+
+@starting-style {
+  dialog[open]::backdrop {
+    backdrop-filter: blur(0px);
+    background-color: rgb(0 0 0 / 0%);
+  }
+}
+
+/* dialog::backdrop { */
+/*   backdrop-filter: blur(2px); */
+/* } */
 
 nav a {
   padding: 0.5rem 0.5rem;
 }
+
 nav a:first-child {
   padding-left: 0;
 }
@@ -48,15 +95,18 @@ nav a:first-child {
 a[aria-current] {
   font-weight: bold;
 }
+
 a {
   /* microsoft docs blue */
   color: #75b6e7;
   text-decoration: none;
 }
+
 a:hover {
   color: #278cda;
   text-decoration: underline;
 }
+
 /* a:visited { */
 /*   color: #ac7ee1; */
 /* } */
@@ -129,6 +179,7 @@ input {
     opacity: 0;
     transform: translate(100px, 0px);
   }
+
   to {
     opacity: 1;
     transform: translate(0px, 0px);
@@ -140,6 +191,7 @@ input {
     opacity: 1;
     transform: translate(0px, 0px);
   }
+
   to {
     opacity: 0;
     transform: translate(-25vw, 0);
