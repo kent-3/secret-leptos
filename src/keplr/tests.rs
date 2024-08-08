@@ -113,14 +113,10 @@ pub fn KeplrTests() -> impl IntoView {
         log!("cleaning up <KeplrTests/>");
     });
 
-    let ctx = use_context::<KeplrState>().expect("missing keplr state context");
-    let is_keplr_enabled = ctx.is_keplr_enabled;
-    let keplr_enabled = move || is_keplr_enabled.get();
-
     let dialog_ref = NodeRef::<Dialog>::new();
 
-    // let enable_keplr_action: Action<(), bool, SyncStorage> =
-    //     Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
+    let enable_keplr_action: Action<(), bool, SyncStorage> =
+        Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
     // let get_account_action: Action<(), Account, SyncStorage> =
     //     Action::new_unsync(|_: &()| get_account(CHAIN_ID));
     let get_key_action: Action<(), KeyInfo, SyncStorage> =
@@ -137,7 +133,7 @@ pub fn KeplrTests() -> impl IntoView {
     let suggest_chain_action: Action<(), (), SyncStorage> =
         Action::new_unsync(move |_: &()| suggest());
 
-    let enable_keplr = move |_| ctx.enable_keplr_action.dispatch(());
+    let enable_keplr = move |_| enable_keplr_action.dispatch(());
     // let get_account = move |_| get_account_action.dispatch(());
     let get_key = move |_| get_key_action.dispatch(());
     let get_viewing_key = move |_| {
@@ -154,7 +150,7 @@ pub fn KeplrTests() -> impl IntoView {
     };
 
     // whether the call is pending
-    let pending_enable = ctx.enable_keplr_action.pending();
+    let pending_enable = enable_keplr_action.pending();
 
     Effect::new(move |_| {
         if pending_enable.get() {
@@ -174,7 +170,7 @@ pub fn KeplrTests() -> impl IntoView {
     view! {
         <h2>"Keplr Tests"</h2>
 
-        { move || if let Some(status) = keplr_enabled() { if status {"enabled"} else {"disabled"} } else { "error" } }
+        { move || if let Some(status) = enable_keplr_action.value().get() { if status {"enabled"} else {"disabled"} } else { "error" } }
 
         <div class="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 overflow-auto items-center ">
 
