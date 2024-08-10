@@ -1,34 +1,80 @@
 [package]
-name = "leptos-tutorial"
+name = "secret-leptos"
 version = "0.1.0"
 edition = "2021"
 
 [build]
 target = "wasm32-unknown-unknown"
 
+[profile.dev]
+# Potential to opt-in on higher optimization for our code. This may increase incremental compilation times, but will reduce binaty size.
+opt-level = 0
+[profile.dev.package."*"]
+# High optimization for our dependencies. This should increase performance drastically whithout hitting our incremental compilation times.
+# This will lead to obscure error messages from third party libraries. Comment this out when experiencing a tricky bug.
+opt-level = 3
+
 [profile.release]
+opt-level = "z"
+lto = "fat"
+debug = 0
+strip = true
 codegen-units = 1
-lto = true
+
+[package.metadata.leptonic]
+# REQUIRED: Leptonic's build-script will copy the Leptonic themes to this directory.
+style-dir = "style"
+
+# REQUIRED: Leptonic's build-script will copy static JS dependencies to this directory.
+js-dir = "public/js"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1"
-serde-wasm-bindgen = "0.6"
-leptos = { version = "0.7.0-beta", features = ["csr", "nightly"] }
-leptos_router = { version = "0.7.0-beta", features = ["nightly"] }
-leptos_meta = { version = "0.7.0-beta" }
+# Leptos official
+leptos = { version = "0.7.0-beta", git = "https://github.com/leptos-rs/leptos", branch = "leptos_0.7", features = [
+  "csr",
+  "nightly",
+] }
+leptos_router = { version = "0.7.0-beta", git = "https://github.com/leptos-rs/leptos", branch = "leptos_0.7", features = [
+  "nightly",
+] }
+leptos_meta = { version = "0.7.0-beta", git = "https://github.com/leptos-rs/leptos", branch = "leptos_0.7" }
+
+# Leptos extenstions and related
+leptos-use = { git = "https://github.com/Synphonyte/leptos-use.git", branch = "leptos-0.7" }
+codee = { version = "0.1", features = [
+  "json_serde",
+  "msgpack_serde",
+  "base64",
+  "prost",
+] }
+# leptonic = { git = "https://github.com/lpotthast/leptonic.git", branch = "main" }
+
+# gRPC
+tonic = { version = "0.11.0", default-features = false }
+
+# Web support
 console_error_panic_hook = "0.1.7"
 gloo-net = "0.6"
+gloo-storage = "0.3"
+js-sys = "0.3"
+
+# Wasm support
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-leptos-use = { git = "https://github.com/Synphonyte/leptos-use.git", branch = "main" }
-rsecret = { version = "0.1.0", path = "../secret-clients/rsecret" }
+serde-wasm-bindgen = "0.6"
 tonic-web-wasm-client = "0.5.1"
-tonic = { version = "0.11.0", default-features = false }
+send_wrapper = { version = "0.6.0", features = ["futures"] }
+
+# Classic
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
 base64 = "0.22"
+
+# Logging
 tracing = "0.1.40"
 tracing-subscriber = "0.3"
 tracing-subscriber-wasm = "0.1"
 
+# Local
 keplr = { path = "../keplr" }
+rsecret = { path = "../secret-clients/rsecret" }

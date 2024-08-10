@@ -21,9 +21,9 @@ impl GlobalState {
 }
 
 #[derive(Copy, Clone)]
-pub struct KeplrState {
-    pub enable_keplr_action: Action<(), bool>,
-    pub is_keplr_enabled: ReadSignal<Option<bool>>,
+pub struct KeplrActions {
+    pub enable_keplr: Action<(), bool>,
+    // pub is_keplr_enabled: RwSignal<Option<bool>>,
     // pub my_address: ReadSignal<String>,
 }
 

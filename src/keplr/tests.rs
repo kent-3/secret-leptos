@@ -1,46 +1,20 @@
-use crate::state::KeplrState;
 use crate::CHAIN_ID;
-use ::keplr::*;
-use js_sys::Error;
-use keplr_sys::disable;
-use leptos::html::Dialog;
+use ::keplr::keplr_sys; // normally you wouldn't use keplr_sys directly
+use ::keplr::{suggest_chain_types::*, Account, Keplr, KeyInfo};
+use gloo_storage::{LocalStorage, Storage};
 use leptos::prelude::*;
 use leptos::web_sys::console;
 
-pub async fn enable_keplr(chain_id: &str) -> bool {
-    log!("Trying to enable Keplr...");
+use tracing::{debug, info};
 
-    let result = Keplr::enable(chain_id).await.map_err(|js_value| {
-        let error = Error::from(js_value)
-            .message()
-            .as_string()
-            .unwrap_or("unknown error".to_string());
-        error
-    });
-
-    match &result {
-        Ok(_) => {
-            log!("Keplr is enabled.");
-            save_to_local_storage("keplr_enabled", true);
-        }
-        Err(ref e) => {
-            log!("{e}");
-            save_to_local_storage("keplr_enabled", false);
-        }
-    }
-
-    result.is_ok()
+async fn enable_keplr(chain_id: &str) -> bool {
+    debug!("Trying to enable Keplr...");
+    Keplr::enable(chain_id).await.is_ok()
 }
 
-fn save_to_local_storage(key: &str, value: bool) {
-    if let Some(storage) = window().local_storage().unwrap() {
-        let _ = storage.set_item(key, &value.to_string());
-    }
-}
-
-// this method seems dumb since `get_key` returns the same and more
+// the "keplrOfflineSigner" object is used in the client constructor
 async fn get_account(chain_id: &str) -> Account {
-    let signer = Keplr::get_offline_signer_only_amino(chain_id);
+    let signer = keplr_sys::get_offline_signer_only_amino(chain_id);
     let accounts = signer.get_accounts().await;
     let accounts = js_sys::Array::from(&accounts);
     let account = accounts.get(0);
@@ -52,13 +26,7 @@ async fn get_account(chain_id: &str) -> Account {
 }
 
 async fn get_key(chain_id: &str) -> KeyInfo {
-    let result = Keplr::get_key(chain_id).await.map_err(|js_value| {
-        let error = Error::from(js_value)
-            .message()
-            .as_string()
-            .unwrap_or("unknown error".to_string());
-        error
-    });
+    let result = Keplr::get_key(chain_id).await;
 
     match result {
         Ok(ref key_info) => log!("{key_info:#?}"),
@@ -68,16 +36,15 @@ async fn get_key(chain_id: &str) -> KeyInfo {
     result.unwrap_or_default()
 }
 
+// internal use only
 fn get_enigma_utils(chain_id: &str) -> () {
-    let js_value = Keplr::get_enigma_utils(chain_id);
+    let js_value = keplr_sys::get_enigma_utils(chain_id);
 
-    console::log_1(&js_value.inner.into());
+    console::log_1(&js_value);
 }
 
 async fn get_secret_20_viewing_key(chain_id: &str, contract_address: String) -> String {
-    let key = Keplr::get_secret_20_viewing_key(chain_id, &contract_address)
-        .await
-        .into();
+    let key = Keplr::get_secret_20_viewing_key(chain_id, &contract_address).await;
 
     log!("{key}");
 
@@ -85,7 +52,7 @@ async fn get_secret_20_viewing_key(chain_id: &str, contract_address: String) -> 
 }
 
 async fn suggest_token(chain_id: &str, contract_address: &str) {
-    let _ = ::keplr::suggest_token(chain_id, contract_address).await;
+    let _ = keplr_sys::suggest_token(chain_id, contract_address).await;
 
     // if you want to handle the error case (user closes the pop up):
 
@@ -113,15 +80,13 @@ pub fn KeplrTests() -> impl IntoView {
         log!("cleaning up <KeplrTests/>");
     });
 
-    let dialog_ref = NodeRef::<Dialog>::new();
-
     let enable_keplr_action: Action<(), bool, SyncStorage> =
         Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
-    // let get_account_action: Action<(), Account, SyncStorage> =
-    //     Action::new_unsync(|_: &()| get_account(CHAIN_ID));
+    let get_account_action: Action<(), Account, SyncStorage> =
+        Action::new_unsync(|_: &()| get_account(CHAIN_ID));
     let get_key_action: Action<(), KeyInfo, SyncStorage> =
         Action::new_unsync(|_: &()| get_key(CHAIN_ID));
-    let get_viewing_key_action: Action<String, String, LocalStorage> =
+    let get_viewing_key_action: Action<String, String, SyncStorage> =
         Action::new_unsync(|input: &String| {
             let token_address = input.clone();
             get_secret_20_viewing_key(CHAIN_ID, token_address)
@@ -133,84 +98,85 @@ pub fn KeplrTests() -> impl IntoView {
     let suggest_chain_action: Action<(), (), SyncStorage> =
         Action::new_unsync(move |_: &()| suggest());
 
-    let enable_keplr = move |_| enable_keplr_action.dispatch(());
-    // let get_account = move |_| get_account_action.dispatch(());
-    let get_key = move |_| get_key_action.dispatch(());
+    // Event Handlers
+    let enable_keplr = move |_| _ = enable_keplr_action.dispatch(());
+    let get_account = move |_| _ = get_account_action.dispatch(());
+    let get_key = move |_| _ = get_key_action.dispatch(());
     let get_viewing_key = move |_| {
-        get_viewing_key_action.dispatch("secret1vkq022x4q8t8kx9de3r84u669l65xnwf2lg3e6".to_string())
+        _ = get_viewing_key_action
+            .dispatch("secret1vkq022x4q8t8kx9de3r84u669l65xnwf2lg3e6".to_string())
     };
-    let suggest_token = move |_| suggest_token_action.dispatch_local(());
-    let suggest_chain = move |_| suggest_chain_action.dispatch_local(());
+    let suggest_token = move |_| _ = suggest_token_action.dispatch_local(());
+    let suggest_chain = move |_| _ = suggest_chain_action.dispatch_local(());
 
-    // non-Actions
+    // Action Value Signals
+    let account = get_account_action.value();
+    let key = get_key_action.value();
+    let viewing_key = get_viewing_key_action.value();
+
+    // Non-Actions
     let get_enigma_utils = move |_| get_enigma_utils(CHAIN_ID);
     let disable_keplr = move |_| {
-        disable(CHAIN_ID);
-        log!("Keplr Disabled")
+        keplr_sys::disable(CHAIN_ID);
+        enable_keplr_action.value().set(Some(false));
+        info!("Keplr Disabled");
     };
 
-    // whether the call is pending
-    let pending_enable = enable_keplr_action.pending();
-
+    // Log to console any time the value changes
     Effect::new(move |_| {
-        if pending_enable.get() {
-            let node = dialog_ref.get().expect("huh");
-            let _ = node.show_modal();
-        } else {
-            let node = dialog_ref.get().expect("huh");
-            node.close();
+        if let Some(status) = enable_keplr_action.value().get() {
+            debug!("keplr_enabled={}", status);
         }
     });
 
-    // the most recent returned result
-    // let account = get_account_action.value();
-    let key = get_key_action.value();
-    let viewing_key = get_viewing_key_action.value();
+    let keplr_status = move || match enable_keplr_action.value().get() {
+        Some(true) => "enabled",
+        Some(false) => "disabled",
+        None => "error: signal empty",
+    };
 
     view! {
         <h2>"Keplr Tests"</h2>
 
-        { move || if let Some(status) = enable_keplr_action.value().get() { if status {"enabled"} else {"disabled"} } else { "error" } }
-
         <div class="grid grid-cols-[auto,1fr] gap-x-4 gap-y-2 overflow-auto items-center ">
 
-            <button on:click=enable_keplr > "Enable" </button>
-            <code class="font-mono max-w-max"> "enable(CHAIN_ID)" </code>
+            <button on:click=enable_keplr>Enable</button>
+            <code class="font-mono max-w-max">"enable(CHAIN_ID)"</code>
 
-            <button on:click=suggest_chain > "Suggest Chain" </button>
-            <code class="font-mono max-w-max"> "experimentalSuggestChain(...)" </code>
+            <button on:click=suggest_chain>"Suggest Chain"</button>
+            <code class="font-mono max-w-max">"experimentalSuggestChain(...)"</code>
 
-            // <button on:click=get_account > "Get Account" </button>
-            // <code class="font-mono max-w-max"> "keplrOfflineSigner.getAccounts(CHAIN_ID)"</code>
+            <button on:click=get_account>"Get Account"</button>
+            <code class="font-mono max-w-max">"keplrOfflineSigner.getAccounts(CHAIN_ID)"</code>
 
-            <button on:click=get_key > "Get Key" </button>
-            <code class="font-mono max-w-max"> "getKey(CHAIN_ID)"</code>
+            <button on:click=get_key>"Get Key"</button>
+            <code class="font-mono max-w-max">"getKey(CHAIN_ID)"</code>
 
-            <button on:click=get_enigma_utils > "Get Enigma Utils" </button>
-            <code class="font-mono max-w-max"> "getEnigmaUtils(CHAIN_ID)"</code>
+            <button on:click=get_enigma_utils>"Get Enigma Utils"</button>
+            <code class="font-mono max-w-max">"getEnigmaUtils(CHAIN_ID)"</code>
 
-            <button on:click=suggest_token > "Suggest Token (AMBER)" </button>
-            <code class="font-mono max-w-max"> "suggestToken(CHAIN_ID, contract_address)"</code>
+            <button on:click=suggest_token>"Suggest Token (AMBER)"</button>
+            <code class="font-mono max-w-max">"suggestToken(CHAIN_ID, contract_address)"</code>
 
-            <button on:click=get_viewing_key > "Get Viewing Key (USDC)" </button>
-            <code class="font-mono max-w-max"> "getSecret20ViewingKey(CHAIN_ID, contract_address)"</code>
+            <button on:click=get_viewing_key>"Get Viewing Key (USDC)"</button>
+            <code class="font-mono max-w-max">
+                "getSecret20ViewingKey(CHAIN_ID, contract_address)"
+            </code>
 
-            <button on:click=disable_keplr > "Disable" </button>
-            <code class="font-mono max-w-max"> "disable(CHAIN_ID)" </code>
+            <button on:click=disable_keplr>"Disable"</button>
+            <code class="font-mono max-w-max">"disable(CHAIN_ID)"</code>
 
         </div>
 
-        // <pre class="overflow-x-auto"> { move || account.get().and_then(|value| Some(format!("{value:#?}"))) } </pre>
-        <pre class="overflow-x-auto"> { move || key.get().and_then(|value| Some(format!("{value:#?}"))) } </pre>
-        <pre class="overflow-x-auto"> { move || viewing_key.get().and_then(|value| Some(format!("Viewing Key: {value:#?}"))) } </pre>
-
-        <dialog node_ref=dialog_ref>
-            <p> "Waiting for Approval..." </p>
-        </dialog>
+        <pre class="overflow-x-auto">
+            {move || account.get().map(|value| format!("{value:#?}"))}
+        </pre>
+        <pre class="overflow-x-auto">{move || key.get().map(|value| format!("{value:#?}"))}</pre>
+        <pre class="overflow-x-auto">
+            {move || viewing_key.get().map(|value| format!("Viewing Key: {value:#?}"))}
+        </pre>
     }
 }
-
-use ::keplr::suggest_chain_types::*;
 
 pub async fn suggest() {
     let chain_info = SuggestingChainInfo {
@@ -253,5 +219,5 @@ pub async fn suggest() {
     };
 
     let chain_info_js = serde_wasm_bindgen::to_value(&chain_info).unwrap();
-    let _ = suggest_chain(chain_info_js).await;
+    let _ = keplr_sys::suggest_chain(chain_info_js).await;
 }

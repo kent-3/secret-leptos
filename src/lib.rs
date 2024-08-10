@@ -1,10 +1,15 @@
-#![allow(unused)]
+// #![allow(unused)]
 
-use base64::prelude::{Engine, BASE64_STANDARD};
+use ::keplr::keplr_sys;
+use ::keplr::{Keplr, KeyInfo};
+use codee::string::FromToStringCodec;
 use leptos::{html::Dialog, logging::log, prelude::*};
-use leptos_router::components::{Route, Router, Routes, A};
-use leptos_router::StaticSegment;
-use serde::{Deserialize, Serialize};
+use leptos_router::{
+    components::{Route, Router, Routes, A},
+    StaticSegment,
+};
+use leptos_use::storage::use_local_storage;
+use tracing::{debug, error, info};
 
 mod components;
 mod constants;
@@ -12,84 +17,178 @@ mod keplr;
 mod state;
 
 use components::Spinner2;
-pub use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
+use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
 use keplr::KeplrTests;
-use state::{GlobalState, KeplrState};
+use state::{GlobalState, KeplrActions};
 
 #[component]
 pub fn App() -> impl IntoView {
     log!("rendering <App/>");
 
-    // Passing Signals through Context
-    let ctx = GlobalState::new();
-    provide_context(ctx);
+    let keplr_keystorechange_handle =
+        window_event_listener_untyped("keplr_keystorechange", move |_| {
+            log!("Key store in Keplr is changed. You may need to refetch the account info.");
+        });
 
-    // TODO: read from local storage if keplr is enabled
+    // Local Functions
+    async fn enable_keplr(chain_id: &str) -> bool {
+        debug!("Trying to enable Keplr...");
+        Keplr::enable(chain_id).await.is_ok()
+    }
 
-    use crate::keplr::enable_keplr;
-    let enable_keplr_action: Action<(), bool, SyncStorage> =
-        Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
-    let enable_keplr = move |_| enable_keplr_action.dispatch(());
-    let pending_enable = enable_keplr_action.pending();
-    let is_keplr_enabled = enable_keplr_action.value().read_only();
+    // Signals
+    let (is_keplr_enabled, set_keplr_enabled, remove_flag) =
+        use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
 
+    // Node references
     let dialog_ref = NodeRef::<Dialog>::new();
+
+    // Actions
+    let enable_keplr_action: Action<(), bool, SyncStorage> =
+        Action::new_unsync_with_value(Some(is_keplr_enabled.get()), |_: &()| {
+            enable_keplr(CHAIN_ID)
+        });
+
+    // on:click handlers
+    let enable_keplr = move |_| {
+        let _ = enable_keplr_action.dispatch(());
+    };
+
+    let disable_keplr = move |_| {
+        keplr_sys::disable(CHAIN_ID);
+        enable_keplr_action.value().set(Some(false));
+    };
+
+    // Effects
+
+    // open the dialog whenever the "enable_keplr_action" is pending
     Effect::new(move |_| {
-        if pending_enable.get() {
-            let node = dialog_ref.get().expect("huh");
-            let _ = node.show_modal();
-        } else {
-            let node = dialog_ref.get().expect("huh");
-            node.close();
+        if let Some(node) = dialog_ref.get() {
+            match enable_keplr_action.pending().get() {
+                true => {
+                    _ = node.show_modal();
+                }
+                false => {
+                    node.close();
+                }
+            }
         }
     });
 
-    let keplr_ctx = KeplrState {
-        enable_keplr_action,
-        is_keplr_enabled,
+    // modify local storage any time the "enable_keplr_action" value changes
+    Effect::new(move |_| {
+        if let Some(status) = enable_keplr_action.value().get() {
+            match status {
+                true => info!("Keplr is Enabled"),
+                false => info!("Keplr is Disabled"),
+            }
+            set_keplr_enabled.set(status);
+            debug!("set 'keplr_enabled={status}' in local storage");
+        }
+    });
+
+    // Passing Signals through Context
+    // let keplr_ctx = KeplrActions {
+    //     enable_keplr: enable_keplr_action,
+    // };
+    // provide_context(keplr_ctx);
+
+    on_cleanup(move || keplr_keystorechange_handle.remove());
+
+    // HTML Elements
+    let connect_button = move || {
+        view! {
+            <button on:click=enable_keplr disabled=enable_keplr_action.pending()>
+                Connect Wallet
+            </button>
+        }
     };
-    provide_context(keplr_ctx);
+    let disconnect_button = move || {
+        view! {
+            <button on:click=disable_keplr>
+                Disconnect Wallet
+            </button>
+        }
+    };
 
     view! {
         <Router>
             <header>
                 <div class="flex justify-between items-center">
                     <h1>"Hello World"</h1>
-                    // <button class="btn inline-flex items-center" disabled=pending_enable>
-                    //     <Spinner2/ >
-                    //     Processing...
-                    // </button>
-                    <button on:click=enable_keplr disabled=pending_enable> Connect Wallet </button>
+                    <Show when=move || !is_keplr_enabled.get() fallback=disconnect_button>
+                        { connect_button }
+                    </Show>
                 </div>
-                <hr/>
+                <hr />
                 <nav>
-                    <A exact=true href="/" >"Home"</A>
-                    <A href="keplr" >"Keplr"</A>
+                    <A exact=true href="/">
+                        "Home"
+                    </A>
+                    <A href="keplr">"Keplr"</A>
                 </nav>
-                <hr/>
+                <hr />
             </header>
             <main class="outline outline-1 outline-offset-4 outline-neutral-500">
-                <Routes fallback=|| "This page could not be found." >
-                    <Route
-                        path=StaticSegment("/")
-                        view=|| view! { <Home/> }
-                    />
-                    <Route
-                        path=StaticSegment("keplr")
-                        view=|| view! { <KeplrTests/> }
-                    />
+                <Routes fallback=|| "This page could not be found.">
+                    <Route path=StaticSegment("/") view=|| view! { <Home /> } />
+                    <Route path=StaticSegment("keplr") view=|| view! { <KeplrTests /> } />
                 </Routes>
             </main>
-            <dialog node_ref=dialog_ref>
-                <p> "Waiting for Approval..." </p>
-            </dialog>
         </Router>
+        <dialog node_ref=dialog_ref >
+            <div class="inline-flex items-center">
+                <Spinner2 size="h-8 w-8" />
+                <strong>Requesting Connection...</strong>
+            </div>
+        </dialog>
     }
 }
 
 #[component]
 fn Home() -> impl IntoView {
-    view! {}
+    use send_wrapper::SendWrapper;
+
+    log!("rendering <Home/>");
+
+    let (is_keplr_enabled, set_keplr_enabled, _remove_flag) =
+        use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
+
+    // whenever the key store changes, this will re-set 'is_keplr_enabled' to true, triggering a
+    // reload of everything subscribed to that signal
+    let keplr_keystorechange_handle =
+        window_event_listener_untyped("keplr_keystorechange", move |_| {
+            set_keplr_enabled.set(true);
+        });
+
+    on_cleanup(move || keplr_keystorechange_handle.remove());
+
+    let user_key = Resource::new(is_keplr_enabled, move |value| {
+        SendWrapper::new(async move {
+            if value {
+                let result = Keplr::get_key(CHAIN_ID).await;
+
+                match result {
+                    Ok(ref key_info) => debug!("{key_info:#?}"),
+                    Err(ref e) => log!("{e}"),
+                }
+
+                let key_info = result.unwrap_or_default();
+                format!("{key_info:#?}")
+            } else {
+                String::new()
+            }
+        })
+    });
+
+    view! {
+        <Show
+            when=move || is_keplr_enabled.get()
+            fallback=|| view! { <p>Nothing to see here</p> }
+        >
+            <pre> { move || user_key.get() } </pre>
+        </Show>
+    }
 }
 
 #[component]
@@ -133,21 +232,11 @@ fn Modal(// Signal that will be toggled when the button is clicked.
     };
 
     view! {
-        <dialog
-            node_ref=dialog_ref
-        >
+        <dialog node_ref=dialog_ref>
             <p>"Connected?: "{is_keplr_enabled}</p>
             <p>"Address: "{my_address}</p>
-            <button
-                on:click=close_modal
-            >
-                "OK"
-            </button>
+            <button on:click=close_modal>"OK"</button>
         </dialog>
-        <button
-            on:click=open_modal
-        >
-            "Example Modal"
-        </button>
+        <button on:click=open_modal>"Example Modal"</button>
     }
 }
