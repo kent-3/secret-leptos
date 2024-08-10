@@ -25,30 +25,40 @@ use state::GlobalState;
 pub fn App() -> impl IntoView {
     log!("rendering <App/>");
 
+    // Node references
+
+    let dialog_ref = NodeRef::<Dialog>::new();
+
+    // Event Listeners
+
     let keplr_keystorechange_handle =
         window_event_listener_untyped("keplr_keystorechange", move |_| {
             log!("Key store in Keplr is changed. You may need to refetch the account info.");
         });
 
+    // Storage Signals
+
+    let (is_keplr_enabled, set_keplr_enabled, _remove_flag) =
+        use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
+
     // Local Functions
+
     async fn enable_keplr(chain_id: &str) -> bool {
         debug!("Trying to enable Keplr...");
         Keplr::enable(chain_id).await.is_ok()
     }
 
-    // Signals
-    let (is_keplr_enabled, set_keplr_enabled, _remove_flag) =
-        use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
-
     // Actions
+
     let enable_keplr_action: Action<(), bool, SyncStorage> =
         Action::new_unsync_with_value(Some(is_keplr_enabled.get()), |_: &()| {
             enable_keplr(CHAIN_ID)
         });
 
     // on:click handlers
+
     let enable_keplr = move |_| {
-        let _ = enable_keplr_action.dispatch(());
+        enable_keplr_action.dispatch(());
     };
 
     let disable_keplr = move |_| {
@@ -56,28 +66,22 @@ pub fn App() -> impl IntoView {
         enable_keplr_action.value().set(Some(false));
     };
 
-    // Node references
-    let dialog_ref = NodeRef::<Dialog>::new();
-
     // Effects
 
     // open the dialog whenever the "enable_keplr_action" is pending
-    Effect::new(move |_| {
-        if let Some(node) = dialog_ref.get() {
-            match enable_keplr_action.pending().get() {
-                true => {
-                    _ = node.show_modal();
-                }
-                false => {
-                    node.close();
-                }
+    Effect::new(move |_| match dialog_ref.get() {
+        Some(dialog) => match enable_keplr_action.pending().get() {
+            true => {
+                let _ = dialog.show_modal();
             }
-        }
+            false => dialog.close(),
+        },
+        None => (),
     });
 
     // modify local storage any time the "enable_keplr_action" value changes
-    Effect::new(move |_| {
-        if let Some(status) = enable_keplr_action.value().get() {
+    Effect::new(move |_| match enable_keplr_action.value().get() {
+        Some(status) => {
             match status {
                 true => info!("Keplr is Enabled"),
                 false => info!("Keplr is Disabled"),
@@ -85,17 +89,21 @@ pub fn App() -> impl IntoView {
             set_keplr_enabled.set(status);
             debug!("set 'keplr_enabled={status}' in local storage");
         }
+        None => (),
     });
 
     // Passing Signals through Context
+
     // let keplr_ctx = KeplrActions {
     //     enable_keplr: enable_keplr_action,
     // };
+    //
     // provide_context(keplr_ctx);
 
     on_cleanup(move || keplr_keystorechange_handle.remove());
 
     // HTML Elements
+
     let connect_button = move || {
         view! {
             <button on:click=enable_keplr disabled=enable_keplr_action.pending()>
@@ -103,6 +111,7 @@ pub fn App() -> impl IntoView {
             </button>
         }
     };
+
     let disconnect_button = move || {
         view! { <button on:click=disable_keplr>Disconnect Wallet</button> }
     };
@@ -152,6 +161,7 @@ fn Home() -> impl IntoView {
 
     // whenever the key store changes, this will re-set 'is_keplr_enabled' to true, triggering a
     // reload of everything subscribed to that signal
+    // maybe not a good idea if that event is emitted when keplr is disabled (need to check)
     let keplr_keystorechange_handle =
         window_event_listener_untyped("keplr_keystorechange", move |_| {
             set_keplr_enabled.set(true);
