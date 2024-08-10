@@ -19,7 +19,7 @@ mod state;
 use components::Spinner2;
 use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
 use keplr::KeplrTests;
-use state::{GlobalState, KeplrActions};
+use state::GlobalState;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -37,11 +37,8 @@ pub fn App() -> impl IntoView {
     }
 
     // Signals
-    let (is_keplr_enabled, set_keplr_enabled, remove_flag) =
+    let (is_keplr_enabled, set_keplr_enabled, _remove_flag) =
         use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
-
-    // Node references
-    let dialog_ref = NodeRef::<Dialog>::new();
 
     // Actions
     let enable_keplr_action: Action<(), bool, SyncStorage> =
@@ -58,6 +55,9 @@ pub fn App() -> impl IntoView {
         keplr_sys::disable(CHAIN_ID);
         enable_keplr_action.value().set(Some(false));
     };
+
+    // Node references
+    let dialog_ref = NodeRef::<Dialog>::new();
 
     // Effects
 
