@@ -104,11 +104,7 @@ pub fn App() -> impl IntoView {
         }
     };
     let disconnect_button = move || {
-        view! {
-            <button on:click=disable_keplr>
-                Disconnect Wallet
-            </button>
-        }
+        view! { <button on:click=disable_keplr>Disconnect Wallet</button> }
     };
 
     view! {
@@ -117,7 +113,7 @@ pub fn App() -> impl IntoView {
                 <div class="flex justify-between items-center">
                     <h1>"Hello World"</h1>
                     <Show when=move || !is_keplr_enabled.get() fallback=disconnect_button>
-                        { connect_button }
+                        {connect_button}
                     </Show>
                 </div>
                 <hr />
@@ -136,7 +132,7 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </main>
         </Router>
-        <dialog node_ref=dialog_ref >
+        <dialog node_ref=dialog_ref>
             <div class="inline-flex items-center">
                 <Spinner2 size="h-8 w-8" />
                 <strong>Requesting Connection...</strong>
@@ -182,11 +178,8 @@ fn Home() -> impl IntoView {
     });
 
     view! {
-        <Show
-            when=move || is_keplr_enabled.get()
-            fallback=|| view! { <p>Nothing to see here</p> }
-        >
-            <pre> { move || user_key.get() } </pre>
+        <Show when=move || is_keplr_enabled.get() fallback=|| view! { <p>Nothing to see here</p> }>
+            <pre>{move || user_key.get()}</pre>
         </Show>
     }
 }
