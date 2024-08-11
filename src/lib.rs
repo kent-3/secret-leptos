@@ -1,7 +1,9 @@
 // #![allow(unused)]
 
-use ::keplr::keplr_sys;
-use ::keplr::{Keplr, KeyInfo};
+use ::keplr::{
+    keplr_sys::{self, KEPLR},
+    Keplr, KeyInfo,
+};
 use codee::string::FromToStringCodec;
 use leptos::{html::Dialog, logging::log, prelude::*};
 use leptos_router::{
@@ -9,6 +11,13 @@ use leptos_router::{
     StaticSegment,
 };
 use leptos_use::storage::use_local_storage;
+use rsecret::{
+    query::{bank::BankQuerier, compute::ComputeQuerier},
+    secret_network_client::CreateQuerierOptions,
+};
+use serde::Deserialize;
+use serde::Serialize;
+use tonic_web_wasm_client::Client;
 use tracing::{debug, error, info};
 
 mod components;
@@ -20,6 +29,34 @@ use components::Spinner2;
 use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
 use keplr::KeplrTests;
 use state::GlobalState;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    TokenInfo {},
+    MemberCode { address: String, key: String },
+    ValidCodes { codes: Vec<String> },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryAnswer {
+    TokenInfo {
+        name: String,
+        symbol: String,
+        decimals: u8,
+        total_supply: String,
+    },
+    MemberCode {
+        code: String,
+    },
+    ValidCodes {
+        codes: Vec<String>,
+    },
+    ViewingKeyError {
+        msg: String,
+    },
+}
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -44,8 +81,16 @@ pub fn App() -> impl IntoView {
     // Local Functions
 
     async fn enable_keplr(chain_id: &str) -> bool {
-        debug!("Trying to enable Keplr...");
-        Keplr::enable(chain_id).await.is_ok()
+        if KEPLR.is_undefined() || KEPLR.is_null() {
+            window()
+                .alert_with_message("keplr not found")
+                .expect("alert failed");
+            // false
+            Keplr::enable(chain_id).await.is_ok()
+        } else {
+            debug!("Trying to enable Keplr...");
+            Keplr::enable(chain_id).await.is_ok()
+        }
     }
 
     // Actions
@@ -140,13 +185,13 @@ pub fn App() -> impl IntoView {
                     <Route path=StaticSegment("keplr") view=|| view! { <KeplrTests /> } />
                 </Routes>
             </main>
+            <dialog node_ref=dialog_ref class="flex items-center">
+                <div class="inline-flex items-center">
+                    <Spinner2 size="h-8 w-8" />
+                    <div class="font-bold">Requesting Connection</div>
+                </div>
+            </dialog>
         </Router>
-        <dialog node_ref=dialog_ref>
-            <div class="inline-flex items-center">
-                <Spinner2 size="h-8 w-8" />
-                <strong>Requesting Connection...</strong>
-            </div>
-        </dialog>
     }
 }
 
@@ -180,16 +225,86 @@ fn Home() -> impl IntoView {
                 }
 
                 let key_info = result.unwrap_or_default();
-                format!("{key_info:#?}")
+                // format!("{key_info:#?}")
+                key_info
             } else {
-                String::new()
+                // String::new()
+                KeyInfo::default()
             }
         })
     });
 
+    let client = Client::new("https://grpc.mainnet.secretsaturn.net".to_string());
+    let bank = BankQuerier::new(client.clone());
+    let user_balance = Resource::new(
+        move || user_key.get(),
+        move |key| {
+            let bank = bank.clone();
+            SendWrapper::new(async move {
+                if let Some(key) = key {
+                    let result = match bank.balance(key.bech32_address, "uscrt").await {
+                        Ok(balance) => {
+                            log!("{balance:#?}");
+                            balance.balance.unwrap().amount
+                        }
+                        Err(error) => {
+                            error!("{error}");
+                            format!("{error}")
+                        }
+                    };
+                    result
+                } else {
+                    String::new()
+                }
+            })
+        },
+    );
+
+    let encryption_utils = secretrs::EncryptionUtils::new(None, "secret-4").unwrap();
+    let options = CreateQuerierOptions {
+        url: "https://grpc.mainnet.secretsaturn.net",
+        chain_id: CHAIN_ID,
+        encryption_utils,
+    };
+    let compute = ComputeQuerier::new(client.clone(), options);
+
+    let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852";
+    let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
+    let query = QueryMsg::TokenInfo {};
+
+    let snip_balance = Resource::new(
+        move || user_key.get(),
+        move |key| {
+            let compute = compute.clone();
+            let query = query.clone();
+            SendWrapper::new(async move {
+                if let Some(key) = key {
+                    let result = match compute
+                        .query_secret_contract(contract_address, code_hash, query)
+                        .await
+                    {
+                        Ok(response) => {
+                            log!("{response:#?}");
+                            response
+                        }
+                        Err(error) => {
+                            error!("{error}");
+                            format!("{error}")
+                        }
+                    };
+                    result
+                } else {
+                    String::new()
+                }
+            })
+        },
+    );
+
     view! {
         <Show when=move || is_keplr_enabled.get() fallback=|| view! { <p>Nothing to see here</p> }>
-            <pre>{move || user_key.get()}</pre>
+            <pre>{move || format!("{:#?}", user_key.get().unwrap_or_default()) }</pre>
+            { move || user_balance.get() }
+            { move || snip_balance.get() }
         </Show>
     }
 }

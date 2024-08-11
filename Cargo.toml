@@ -21,13 +21,6 @@ debug = 0
 strip = true
 codegen-units = 1
 
-[package.metadata.leptonic]
-# REQUIRED: Leptonic's build-script will copy the Leptonic themes to this directory.
-style-dir = "style"
-
-# REQUIRED: Leptonic's build-script will copy static JS dependencies to this directory.
-js-dir = "public/js"
-
 [dependencies]
 # Leptos official
 leptos = { version = "0.7.0-beta", git = "https://github.com/leptos-rs/leptos", branch = "leptos_0.7", features = [
@@ -48,6 +41,10 @@ codee = { version = "0.1", features = [
   "prost",
 ] }
 # leptonic = { git = "https://github.com/lpotthast/leptonic.git", branch = "main" }
+# thaw = { version = "0.4.0-alpha", git = "https://github.com/thaw-ui/thaw.git", branch = "thaw/fluent", features = [
+#   "csr",
+#   "nightly",
+# ] }
 
 # gRPC
 tonic = { version = "0.11.0", default-features = false }
@@ -78,3 +75,4 @@ tracing-subscriber-wasm = "0.1"
 # Local
 keplr = { path = "../keplr" }
 rsecret = { path = "../secret-clients/rsecret" }
+secretrs = "0.1"
