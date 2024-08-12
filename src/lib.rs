@@ -19,6 +19,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use tonic_web_wasm_client::Client;
 use tracing::{debug, error, info};
+use wasm_bindgen_futures::spawn_local;
 
 mod components;
 mod constants;
@@ -58,9 +59,120 @@ pub enum QueryAnswer {
     },
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Signer {
+    Keplr,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct SecretService {
+    pub signer: Signer,
+    pub is_extension_available: Signal<bool>,
+    extension_is_available: WriteSignal<bool>,
+    pub is_extension_enabled: Signal<bool>,
+    extension_is_enabled: WriteSignal<bool>,
+    pub user_data: ReadSignal<Option<KeyInfo>>,
+    set_user_data: WriteSignal<Option<KeyInfo>>,
+}
+
+impl SecretService {
+    pub fn keplr() -> Self {
+        let name = "keplr";
+
+        // let (is_extension_available, extension_is_available) = signal(false);
+        let (is_extension_available, extension_is_available, _) =
+            use_local_storage::<bool, FromToStringCodec>(format!("{name}_available"));
+
+        let (is_extension_enabled, extension_is_enabled, _) =
+            use_local_storage::<bool, FromToStringCodec>(format!("{name}_enabled"));
+
+        let (user_data, set_user_data) = signal(None);
+
+        // (raw way to access something on the window)
+        // let keplr = js_sys::Reflect::get(&window(), &wasm_bindgen::JsValue::from_str("keplr"))
+        //     .expect("unable to check for `keplr` property");
+
+        if !KEPLR.is_undefined() && !KEPLR.is_null() {
+            extension_is_available.set(true);
+        }
+
+        let service = Self {
+            signer: Signer::Keplr,
+            is_extension_available,
+            extension_is_available,
+            is_extension_enabled,
+            extension_is_enabled,
+            user_data,
+            set_user_data,
+        };
+
+        // Can't do this here because it will trigger pop-up
+        // spawn_local(async move {
+        //     let _ = service.enable_keplr(CHAIN_ID, extension_is_enabled);
+        //     let _ = service.fetch_user_data().await;
+        // });
+
+        window_event_listener_untyped("keplr_keystorechange", move |_| {
+            log!("Key store in Keplr is changed. You may need to refetch the account info.");
+            let service = service.clone();
+            spawn_local(async move {
+                let _ = service.fetch_user_data().await;
+            });
+        });
+
+        service
+    }
+
+    // why does this return a bool?
+    async fn enable_keplr(&self, chain_id: &str) -> bool {
+        if self.is_extension_available.get_untracked() {
+            window()
+                .alert_with_message("keplr not found")
+                .expect("alert failed");
+            self.extension_is_enabled.set(false);
+            false
+        } else {
+            debug!("Trying to enable Keplr...");
+
+            let enabled = Keplr::enable(chain_id).await.is_ok();
+            self.extension_is_enabled.set(enabled);
+            enabled
+        }
+    }
+
+    // Method to interact with the extension
+    async fn fetch_user_data(&self) -> Result<(), String> {
+        debug!("fetching user data");
+        if self.is_extension_available.get_untracked() {
+            match Keplr::get_key(CHAIN_ID).await {
+                Ok(key_info) => {
+                    debug!("{key_info:#?}");
+                    self.set_user_data.set(Some(key_info));
+                    Ok(())
+                }
+                Err(e) => {
+                    error!("{e}");
+                    Err(format!("{e}"))
+                }
+            }
+        } else {
+            error!("Wallet extension is not available");
+            Err("Wallet extension is not available".to_string())
+        }
+    }
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     log!("rendering <App/>");
+
+    use send_wrapper::SendWrapper;
+
+    // TODO:
+    let service = SecretService::keplr();
+    let enable_service_action: Action<(), bool, SyncStorage> = Action::new(move |_: &()| {
+        SendWrapper::new(async move { service.enable_keplr(CHAIN_ID).await })
+    });
 
     // Node references
 
@@ -68,36 +180,44 @@ pub fn App() -> impl IntoView {
 
     // Event Listeners
 
-    let keplr_keystorechange_handle =
-        window_event_listener_untyped("keplr_keystorechange", move |_| {
-            log!("Key store in Keplr is changed. You may need to refetch the account info.");
-        });
+    // let keplr_keystorechange_handle =
+    //     window_event_listener_untyped("keplr_keystorechange", move |_| {
+    //         log!("Key store in Keplr is changed. You may need to refetch the account info.");
+    //     });
 
     // Storage Signals
 
-    let (is_keplr_enabled, set_keplr_enabled, _remove_flag) =
+    let (is_keplr_enabled, set_keplr_enabled, remove_flag) =
         use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
 
     // Local Functions
 
-    async fn enable_keplr(chain_id: &str) -> bool {
+    async fn enable_keplr(
+        chain_id: &str,
+        storage_setter: WriteSignal<bool>,
+        remove_storage_key: impl Fn() + Clone, // is there any reason to use this?
+    ) -> bool {
         if KEPLR.is_undefined() || KEPLR.is_null() {
             window()
                 .alert_with_message("keplr not found")
                 .expect("alert failed");
-            // false
-            Keplr::enable(chain_id).await.is_ok()
+            storage_setter.set(false);
+            remove_storage_key(); // is there any reason to use this?
+            false
         } else {
             debug!("Trying to enable Keplr...");
-            Keplr::enable(chain_id).await.is_ok()
+            let enabled = Keplr::enable(chain_id).await.is_ok();
+            storage_setter.set(enabled);
+            enabled
         }
     }
 
     // Actions
 
     let enable_keplr_action: Action<(), bool, SyncStorage> =
-        Action::new_unsync_with_value(Some(is_keplr_enabled.get()), |_: &()| {
-            enable_keplr(CHAIN_ID)
+        Action::new_unsync_with_value(Some(is_keplr_enabled.get()), move |_: &()| {
+            let remove_flag = remove_flag.clone();
+            enable_keplr(CHAIN_ID, set_keplr_enabled, remove_flag)
         });
 
     // on:click handlers
@@ -145,7 +265,7 @@ pub fn App() -> impl IntoView {
     //
     // provide_context(keplr_ctx);
 
-    on_cleanup(move || keplr_keystorechange_handle.remove());
+    // on_cleanup(move || keplr_keystorechange_handle.remove());
 
     // HTML Elements
 
@@ -272,7 +392,7 @@ fn Home() -> impl IntoView {
     let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
     let query = QueryMsg::TokenInfo {};
 
-    let snip_balance = Resource::new(
+    let token_info = Resource::new(
         move || user_key.get(),
         move |key| {
             let compute = compute.clone();
@@ -303,8 +423,10 @@ fn Home() -> impl IntoView {
     view! {
         <Show when=move || is_keplr_enabled.get() fallback=|| view! { <p>Nothing to see here</p> }>
             <pre>{move || format!("{:#?}", user_key.get().unwrap_or_default()) }</pre>
-            { move || user_balance.get() }
-            { move || snip_balance.get() }
+            <Suspense fallback=move || view!{ <p> "Loading..." </p> }>
+                <p> { move || user_balance.get() } </p>
+                <p> { move || token_info.get() } </p>
+            </Suspense>
         </Show>
     }
 }
