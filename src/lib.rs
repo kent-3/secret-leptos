@@ -1,16 +1,17 @@
 // #![allow(unused)]
 
+// use codee::string::FromToStringCodec;
+// use leptos_use::storage::use_local_storage;
+
 use ::keplr::{
     keplr_sys::{self, KEPLR},
     Keplr, KeyInfo,
 };
-use codee::string::FromToStringCodec;
 use leptos::{html::Dialog, logging::log, prelude::*};
 use leptos_router::{
     components::{Route, Router, Routes, A},
     StaticSegment,
 };
-use leptos_use::storage::use_local_storage;
 use rsecret::{
     query::{bank::BankQuerier, compute::ComputeQuerier},
     secret_network_client::CreateQuerierOptions,
@@ -19,6 +20,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use tonic_web_wasm_client::Client;
 use tracing::{debug, error, info};
+use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 
 mod components;
@@ -60,16 +62,10 @@ pub enum QueryAnswer {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Signer {
-    Keplr,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 struct SecretService {
-    pub signer: Signer,
-    pub is_extension_available: Signal<bool>,
+    pub is_extension_available: ReadSignal<bool>,
     extension_is_available: WriteSignal<bool>,
-    pub is_extension_enabled: Signal<bool>,
+    pub is_extension_enabled: ReadSignal<bool>,
     extension_is_enabled: WriteSignal<bool>,
     pub user_data: ReadSignal<Option<KeyInfo>>,
     set_user_data: WriteSignal<Option<KeyInfo>>,
@@ -77,27 +73,19 @@ struct SecretService {
 
 impl SecretService {
     pub fn keplr() -> Self {
-        let name = "keplr";
-
-        // let (is_extension_available, extension_is_available) = signal(false);
-        let (is_extension_available, extension_is_available, _) =
-            use_local_storage::<bool, FromToStringCodec>(format!("{name}_available"));
-
-        let (is_extension_enabled, extension_is_enabled, _) =
-            use_local_storage::<bool, FromToStringCodec>(format!("{name}_enabled"));
-
+        let (is_extension_available, extension_is_available) = signal(false);
+        let (is_extension_enabled, extension_is_enabled) = signal(false);
         let (user_data, set_user_data) = signal(None);
 
         // (raw way to access something on the window)
-        // let keplr = js_sys::Reflect::get(&window(), &wasm_bindgen::JsValue::from_str("keplr"))
-        //     .expect("unable to check for `keplr` property");
+        let keplr = js_sys::Reflect::get(&window(), &JsValue::from_str("keplr"))
+            .expect("unable to check for `keplr` property");
 
-        if !KEPLR.is_undefined() && !KEPLR.is_null() {
+        if !keplr.is_undefined() && !keplr.is_null() {
             extension_is_available.set(true);
         }
 
         let service = Self {
-            signer: Signer::Keplr,
             is_extension_available,
             extension_is_available,
             is_extension_enabled,
@@ -113,8 +101,6 @@ impl SecretService {
         // });
 
         window_event_listener_untyped("keplr_keystorechange", move |_| {
-            log!("Key store in Keplr is changed. You may need to refetch the account info.");
-            let service = service.clone();
             spawn_local(async move {
                 let _ = service.fetch_user_data().await;
             });
@@ -123,55 +109,61 @@ impl SecretService {
         service
     }
 
-    // why does this return a bool?
-    async fn enable_keplr(&self, chain_id: &str) -> bool {
-        if self.is_extension_available.get_untracked() {
+    pub async fn enable_keplr(&self, chain_id: &str) {
+        if KEPLR.is_undefined() || KEPLR.is_null() {
             window()
                 .alert_with_message("keplr not found")
                 .expect("alert failed");
             self.extension_is_enabled.set(false);
-            false
         } else {
-            debug!("Trying to enable Keplr...");
-
-            let enabled = Keplr::enable(chain_id).await.is_ok();
-            self.extension_is_enabled.set(enabled);
-            enabled
+            match Keplr::enable(chain_id).await {
+                Ok(_) => {
+                    self.extension_is_enabled.set(true);
+                    let _ = self.fetch_user_data();
+                    debug!("Keplr is enabled");
+                }
+                Err(e) => {
+                    self.extension_is_enabled.set(false);
+                    error!("{e}");
+                }
+            }
         }
     }
 
-    // Method to interact with the extension
-    async fn fetch_user_data(&self) -> Result<(), String> {
+    pub fn disable_keplr(&self) {
+        keplr_sys::disable(CHAIN_ID);
+        self.extension_is_enabled.set(false);
+        self.set_user_data.set(None);
+        debug!("Keplr is Disabled");
+    }
+
+    pub async fn fetch_user_data(&self) -> Result<(), String> {
         debug!("fetching user data");
-        if self.is_extension_available.get_untracked() {
-            match Keplr::get_key(CHAIN_ID).await {
-                Ok(key_info) => {
-                    debug!("{key_info:#?}");
-                    self.set_user_data.set(Some(key_info));
-                    Ok(())
-                }
-                Err(e) => {
-                    error!("{e}");
-                    Err(format!("{e}"))
-                }
+        match Keplr::get_key(CHAIN_ID).await {
+            Ok(key_info) => {
+                debug!("{key_info:#?}");
+                self.set_user_data.set(Some(key_info));
+                Ok(())
             }
-        } else {
-            error!("Wallet extension is not available");
-            Err("Wallet extension is not available".to_string())
+            Err(e) => {
+                error!("{e}");
+                Err(format!("{e}"))
+            }
         }
     }
 }
 
 #[component]
 pub fn App() -> impl IntoView {
-    log!("rendering <App/>");
-
     use send_wrapper::SendWrapper;
 
-    // TODO:
+    log!("rendering <App/>");
+
     let service = SecretService::keplr();
-    let enable_service_action: Action<(), bool, SyncStorage> = Action::new(move |_: &()| {
-        SendWrapper::new(async move { service.enable_keplr(CHAIN_ID).await })
+    let enable_keplr_action: Action<(), (), SyncStorage> = Action::new(move |_: &()| {
+        SendWrapper::new(async move {
+            service.enable_keplr(CHAIN_ID).await;
+        })
     });
 
     // Node references
@@ -180,44 +172,9 @@ pub fn App() -> impl IntoView {
 
     // Event Listeners
 
-    // let keplr_keystorechange_handle =
-    //     window_event_listener_untyped("keplr_keystorechange", move |_| {
-    //         log!("Key store in Keplr is changed. You may need to refetch the account info.");
-    //     });
-
-    // Storage Signals
-
-    let (is_keplr_enabled, set_keplr_enabled, remove_flag) =
-        use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
-
-    // Local Functions
-
-    async fn enable_keplr(
-        chain_id: &str,
-        storage_setter: WriteSignal<bool>,
-        remove_storage_key: impl Fn() + Clone, // is there any reason to use this?
-    ) -> bool {
-        if KEPLR.is_undefined() || KEPLR.is_null() {
-            window()
-                .alert_with_message("keplr not found")
-                .expect("alert failed");
-            storage_setter.set(false);
-            remove_storage_key(); // is there any reason to use this?
-            false
-        } else {
-            debug!("Trying to enable Keplr...");
-            let enabled = Keplr::enable(chain_id).await.is_ok();
-            storage_setter.set(enabled);
-            enabled
-        }
-    }
-
-    // Actions
-
-    let enable_keplr_action: Action<(), bool, SyncStorage> =
-        Action::new_unsync_with_value(Some(is_keplr_enabled.get()), move |_: &()| {
-            let remove_flag = remove_flag.clone();
-            enable_keplr(CHAIN_ID, set_keplr_enabled, remove_flag)
+    let keplr_keystorechange_handle =
+        window_event_listener_untyped("keplr_keystorechange", move |_| {
+            log!("Key store in Keplr is changed. You may need to refetch the account info.");
         });
 
     // on:click handlers
@@ -226,10 +183,7 @@ pub fn App() -> impl IntoView {
         enable_keplr_action.dispatch(());
     };
 
-    let disable_keplr = move |_| {
-        keplr_sys::disable(CHAIN_ID);
-        enable_keplr_action.value().set(Some(false));
-    };
+    let disable_keplr = move |_| service.disable_keplr();
 
     // Effects
 
@@ -241,19 +195,6 @@ pub fn App() -> impl IntoView {
             }
             false => dialog.close(),
         },
-        None => (),
-    });
-
-    // modify local storage any time the "enable_keplr_action" value changes
-    Effect::new(move |_| match enable_keplr_action.value().get() {
-        Some(status) => {
-            match status {
-                true => info!("Keplr is Enabled"),
-                false => info!("Keplr is Disabled"),
-            }
-            set_keplr_enabled.set(status);
-            debug!("set 'keplr_enabled={status}' in local storage");
-        }
         None => (),
     });
 
@@ -286,7 +227,7 @@ pub fn App() -> impl IntoView {
             <header>
                 <div class="flex justify-between items-center">
                     <h1>"Hello World"</h1>
-                    <Show when=move || !is_keplr_enabled.get() fallback=disconnect_button>
+                    <Show when=move || !service.is_extension_enabled.get() fallback=disconnect_button>
                         {connect_button}
                     </Show>
                 </div>
@@ -301,7 +242,7 @@ pub fn App() -> impl IntoView {
             </header>
             <main class="outline outline-1 outline-offset-4 outline-neutral-500">
                 <Routes fallback=|| "This page could not be found.">
-                    <Route path=StaticSegment("/") view=|| view! { <Home /> } />
+                    <Route path=StaticSegment("/") view=move || view! { <Home service /> } />
                     <Route path=StaticSegment("keplr") view=|| view! { <KeplrTests /> } />
                 </Routes>
             </main>
@@ -316,69 +257,35 @@ pub fn App() -> impl IntoView {
 }
 
 #[component]
-fn Home() -> impl IntoView {
+fn Home(service: SecretService) -> impl IntoView {
     use send_wrapper::SendWrapper;
 
     log!("rendering <Home/>");
 
-    let (is_keplr_enabled, set_keplr_enabled, _remove_flag) =
-        use_local_storage::<bool, FromToStringCodec>("keplr_enabled");
+    let client = Client::new("https://grpc.mainnet.secretsaturn.net".to_string());
+    let bank = BankQuerier::new(client.clone());
 
-    // whenever the key store changes, this will re-set 'is_keplr_enabled' to true, triggering a
-    // reload of everything subscribed to that signal
-    // maybe not a good idea if that event is emitted when keplr is disabled (need to check)
-    let keplr_keystorechange_handle =
-        window_event_listener_untyped("keplr_keystorechange", move |_| {
-            set_keplr_enabled.set(true);
-        });
-
-    on_cleanup(move || keplr_keystorechange_handle.remove());
-
-    let user_key = Resource::new(is_keplr_enabled, move |value| {
+    let user_balance = Resource::new(service.user_data, move |key| {
+        debug!("running user_balance resource");
+        let bank = bank.clone();
         SendWrapper::new(async move {
-            if value {
-                let result = Keplr::get_key(CHAIN_ID).await;
-
-                match result {
-                    Ok(ref key_info) => debug!("{key_info:#?}"),
-                    Err(ref e) => log!("{e}"),
-                }
-
-                let key_info = result.unwrap_or_default();
-                // format!("{key_info:#?}")
-                key_info
+            if let Some(key) = key {
+                let result = match bank.balance(key.bech32_address, "uscrt").await {
+                    Ok(balance) => {
+                        log!("{balance:#?}");
+                        balance.balance.unwrap().amount
+                    }
+                    Err(error) => {
+                        error!("{error}");
+                        format!("{error}")
+                    }
+                };
+                result
             } else {
-                // String::new()
-                KeyInfo::default()
+                "hmmm".to_string()
             }
         })
     });
-
-    let client = Client::new("https://grpc.mainnet.secretsaturn.net".to_string());
-    let bank = BankQuerier::new(client.clone());
-    let user_balance = Resource::new(
-        move || user_key.get(),
-        move |key| {
-            let bank = bank.clone();
-            SendWrapper::new(async move {
-                if let Some(key) = key {
-                    let result = match bank.balance(key.bech32_address, "uscrt").await {
-                        Ok(balance) => {
-                            log!("{balance:#?}");
-                            balance.balance.unwrap().amount
-                        }
-                        Err(error) => {
-                            error!("{error}");
-                            format!("{error}")
-                        }
-                    };
-                    result
-                } else {
-                    String::new()
-                }
-            })
-        },
-    );
 
     let encryption_utils = secretrs::EncryptionUtils::new(None, "secret-4").unwrap();
     let options = CreateQuerierOptions {
@@ -390,40 +297,36 @@ fn Home() -> impl IntoView {
 
     let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852";
     let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
-    let query = QueryMsg::TokenInfo {};
 
-    let token_info = Resource::new(
-        move || user_key.get(),
-        move |key| {
-            let compute = compute.clone();
-            let query = query.clone();
-            SendWrapper::new(async move {
-                if let Some(key) = key {
-                    let result = match compute
-                        .query_secret_contract(contract_address, code_hash, query)
-                        .await
-                    {
-                        Ok(response) => {
-                            log!("{response:#?}");
-                            response
-                        }
-                        Err(error) => {
-                            error!("{error}");
-                            format!("{error}")
-                        }
-                    };
-                    result
-                } else {
-                    String::new()
+    let token_info = Resource::new(service.user_data, move |_| {
+        debug!("running token_info resource");
+        let compute = compute.clone();
+        SendWrapper::new(async move {
+            // key not needed in this case, but we would need it for permissioned queries
+            let query = QueryMsg::TokenInfo {};
+            let result = match compute
+                .query_secret_contract(contract_address, code_hash, query)
+                .await
+            {
+                Ok(response) => {
+                    log!("{response:#?}");
+                    response
                 }
-            })
-        },
-    );
+                Err(error) => {
+                    error!("{error}");
+                    format!("{error}")
+                }
+            };
+            result
+        })
+    });
 
     view! {
-        <Show when=move || is_keplr_enabled.get() fallback=|| view! { <p>Nothing to see here</p> }>
-            <pre>{move || format!("{:#?}", user_key.get().unwrap_or_default()) }</pre>
-            <Suspense fallback=move || view!{ <p> "Loading..." </p> }>
+        <Show when=move || service.is_extension_enabled.get() fallback=move || view! { <p>"Nothing to see here"</p> }>
+            <pre>{move || format!("{:#?}", service.user_data.get().unwrap_or_default()) }</pre>
+            <Suspense
+                fallback=move || view! { <p>"Loading..."</p> }
+            >
                 <p> { move || user_balance.get() } </p>
                 <p> { move || token_info.get() } </p>
             </Suspense>
