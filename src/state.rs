@@ -1,8 +1,4 @@
-use crate::{CHAIN_ID, GRPC_URL, LCD_URL};
 use leptos::prelude::*;
-use rsecret::SecretNetworkClient;
-
-// use crate::secretjs::SecretNetworkClient;
 
 // Still deciding what else to include here.
 #[derive(Copy, Clone, Debug)]
@@ -21,10 +17,29 @@ impl GlobalState {
 }
 
 #[derive(Copy, Clone)]
-pub struct KeplrActions {
-    pub enable_keplr: Action<(), bool>,
-    // pub is_keplr_enabled: RwSignal<Option<bool>>,
-    // pub my_address: ReadSignal<String>,
+pub struct KeplrSignals {
+    pub is_enabled: ReadSignal<bool>,
+    pub enabled: WriteSignal<bool>,
+}
+
+impl KeplrSignals {
+    pub fn new() -> Self {
+        let (is_enabled, enabled) = signal(false);
+        Self {
+            is_enabled,
+            enabled,
+        }
+    }
+}
+
+impl Default for KeplrSignals {
+    fn default() -> Self {
+        let (is_enabled, enabled) = signal(false);
+        Self {
+            is_enabled,
+            enabled,
+        }
+    }
 }
 
 // not sure this a good approach...
