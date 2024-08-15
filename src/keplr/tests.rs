@@ -1,7 +1,6 @@
 use crate::CHAIN_ID;
 use ::keplr::keplr_sys; // normally you wouldn't use keplr_sys directly
 use ::keplr::{suggest_chain_types::*, Account, Keplr, KeyInfo};
-use gloo_storage::{LocalStorage, Storage};
 use leptos::prelude::*;
 use leptos::web_sys::console;
 
@@ -102,6 +101,7 @@ pub fn KeplrTests() -> impl IntoView {
     let enable_keplr = move |_| _ = enable_keplr_action.dispatch(());
     let get_account = move |_| _ = get_account_action.dispatch(());
     let get_key = move |_| _ = get_key_action.dispatch(());
+    // TODO: handle the Error when the user does not have a viewing key (in Keplr)
     let get_viewing_key = move |_| {
         _ = get_viewing_key_action
             .dispatch("secret1vkq022x4q8t8kx9de3r84u669l65xnwf2lg3e6".to_string())

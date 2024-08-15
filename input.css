@@ -194,7 +194,12 @@ input {
   color: #efd9fd;
   background-color: #3b2e58;
   border: 1px solid #3b2e58;
-  padding: 0.25rem 0.5rem;
+  padding: 1rem 1rem;
+}
+
+.error p,
+ul {
+  margin-block: 0;
 }
 
 .fadeIn {

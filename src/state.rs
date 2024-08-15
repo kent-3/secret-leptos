@@ -1,4 +1,7 @@
+use crate::constants::GRPC_URL;
+use ::keplr::KeyInfo;
 use leptos::prelude::*;
+use tonic_web_wasm_client::Client;
 
 // Still deciding what else to include here.
 #[derive(Copy, Clone, Debug)]
@@ -16,28 +19,69 @@ impl GlobalState {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct WasmClient(RwSignal<Client>);
+
+impl WasmClient {
+    pub fn new() -> Self {
+        Self {
+            0: RwSignal::new(Client::new(GRPC_URL.to_string())),
+        }
+    }
+}
+
+impl std::ops::Deref for WasmClient {
+    type Target = RwSignal<Client>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// #[derive(Copy, Clone)]
+// pub struct ClientSignals {
+//     pub grpc_url: RwSignal<String>,
+//     pub client: RwSignal<Client>,
+// }
+//
+// impl ClientSignals {
+//     pub fn new() -> Self {
+//         Self {
+//             grpc_url: RwSignal::new(GRPC_URL.to_string()),
+//             client: RwSignal::new(Client::new(GRPC_URL.to_string())),
+//         }
+//     }
+// }
+//
+// impl Default for ClientSignals {
+//     fn default() -> Self {
+//         Self {
+//             grpc_url: RwSignal::new(GRPC_URL.to_string()),
+//             client: RwSignal::new(Client::new(GRPC_URL.to_string())),
+//         }
+//     }
+// }
+
 #[derive(Copy, Clone)]
 pub struct KeplrSignals {
-    pub is_enabled: ReadSignal<bool>,
-    pub enabled: WriteSignal<bool>,
+    pub enabled: RwSignal<bool>,
+    pub key_info: RwSignal<Option<KeyInfo>>,
 }
 
 impl KeplrSignals {
     pub fn new() -> Self {
-        let (is_enabled, enabled) = signal(false);
         Self {
-            is_enabled,
-            enabled,
+            enabled: RwSignal::new(false),
+            key_info: RwSignal::new(None),
         }
     }
 }
 
 impl Default for KeplrSignals {
     fn default() -> Self {
-        let (is_enabled, enabled) = signal(false);
         Self {
-            is_enabled,
-            enabled,
+            enabled: RwSignal::new(false),
+            key_info: RwSignal::new(None),
         }
     }
 }
