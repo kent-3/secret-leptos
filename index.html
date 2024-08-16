@@ -5,16 +5,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <script defer src="https://unpkg.com/secretjs@1.9.3/dist/browser.js"></script>
   <link data-trunk rel="rust" data-wasm-opt="z" />
   <link data-trunk rel="icon" type="image/ico" href="public/favicon.ico" />
   <link data-trunk rel="tailwind-css" href="input.css" />
-  <!-- <link data-trunk rel="scss" href="style/main.scss" /> -->
-  <link data-trunk rel="copy-file" href="public/robots.txt" />
-  <link data-trunk rel="copy-dir" href="public/js/" />
+
   <script>
     function checkResourcesLoaded() {
-      if (window.myWasmIsReady && window.secretjs) {
+      if (window.myWasmIsReady) {
         removeElement("elementToRemove");
       } else {
         setTimeout(checkResourcesLoaded, 100);

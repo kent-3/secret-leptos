@@ -5,9 +5,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <script defer src="https://unpkg.com/secretjs@1.9.3/dist/browser.js"></script>
   
-<script type="module" nonce="hoBtIVij8IZO4IPtFkyoMA==">
+<script type="module" nonce="BgbnQ8qaBhr8heMofTWBlQ==">
 import init, * as bindings from '/secret-leptos-b98ea99ef209074.js';
 const wasm = await init('/secret-leptos-b98ea99ef209074_bg.wasm');
 
@@ -18,14 +17,12 @@ window.wasmBindings = bindings;
 dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
 
 </script>
-  <link rel="icon" href="/favicon-e9cbd8f50cc65bf2.ico" integrity="sha384&#x2D;YobgLXwtz0GhXVUTHml49p32guapVFlEG8UpQdDVN3kekOqkQi&#x2B;qSXEpwp&#x2B;yM4BW"/>
-  <link rel="stylesheet" href="/input-1e281e73305a75dd.css" integrity="sha384&#x2D;oetCHYGBfUNM84kyFcBMXGp8djsTF4YBWZK4mg1yjqBxJgfjTVf&#x2B;aqfZN7&#x2B;6Tzkf"/>
-  <!-- <link data-trunk rel="scss" href="style/main.scss" /> -->
-  
-  
+  <link rel="icon" href="/favicon-e9cbd8f50cc65bf2.ico"/>
+  <link rel="stylesheet" href="/input-1e281e73305a75dd.css"/>
+
   <script>
     function checkResourcesLoaded() {
-      if (window.myWasmIsReady && window.secretjs) {
+      if (window.myWasmIsReady) {
         removeElement("elementToRemove");
       } else {
         setTimeout(checkResourcesLoaded, 100);
@@ -41,9 +38,7 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
       checkResourcesLoaded();
     });
   </script>
-
-<link rel="modulepreload" href="/secret-leptos-b98ea99ef209074.js" crossorigin=anonymous integrity="sha384-nNAoXF5j5ZRhnCf+zN8u3ItutlpVCwpW65uKjczZv7ILrGJlyhDokPbiXuIOvOu6">
-<link rel="preload" href="/secret-leptos-b98ea99ef209074_bg.wasm" crossorigin=anonymous integrity="sha384-17Jd8VxNw4WFPBDfPTvtC7jaLvCKa8SvyB6v2s9Wn4cb/DfPZyXb89JZmbm9tzMv" as="fetch" type="application/wasm"></head>
+</head>
 
 <style>
   .spinner {
