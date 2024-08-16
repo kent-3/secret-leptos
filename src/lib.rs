@@ -188,6 +188,34 @@ pub fn App() -> impl IntoView {
     //     None => (),
     // });
 
+    let encryption_utils = secretrs::EncryptionUtils::new(None, "secret-4").unwrap();
+    let options = CreateQuerierOptions {
+        url: "https://grpc.mainnet.secretsaturn.net",
+        chain_id: CHAIN_ID,
+        encryption_utils,
+    };
+    // let compute = ComputeQuerier::new(client.clone(), options);
+
+    let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852";
+    let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
+
+    // let amber_balance = Resource::new(
+    //     move || keplr.key_info.get(),
+    //     move |key| {
+    //         // let compute = compute.clone();
+    //         debug!("wasm_client changed. running token_info resource");
+    //         let compute = ComputeQuerier::new(wasm_client.get(), options.clone());
+    //         SendWrapper::new(async move {
+    //             // key not needed in this case, but we would need it for permissioned queries
+    //             let query = QueryMsg::TokenInfo {};
+    //             compute
+    //                 .query_secret_contract(contract_address, code_hash, query)
+    //                 .await
+    //                 .map_err(|error| Error::GenericError(error.to_string()))
+    //         })
+    //     },
+    // );
+
     on_cleanup(move || keplr_keystorechange_handle.remove());
 
     // HTML Elements
