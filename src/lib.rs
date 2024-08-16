@@ -250,17 +250,17 @@ pub fn App() -> impl IntoView {
                 </div>
                 <hr />
                 <nav>
-                    <A exact=true href="/">
+                    <A exact=true href="/secret-leptos/">
                         "Home"
                     </A>
-                    <A href="keplr">"Keplr"</A>
+                    <A href="/secret-leptos/keplr">"Keplr"</A>
                 </nav>
                 <hr />
             </header>
             <main class="outline outline-1 outline-offset-8 outline-neutral-500">
                 <Routes fallback=|| "This page could not be found.">
-                    <Route path=StaticSegment("/") view=|| view! { <Home /> } />
-                    <Route path=StaticSegment("keplr") view=|| view! { <KeplrTests /> } />
+                    <Route path=StaticSegment("/secret-leptos/") view=|| view! { <Home /> } />
+                    <Route path=StaticSegment("/secret-leptos/keplr") view=|| view! { <KeplrTests /> } />
                 </Routes>
             </main>
             <LoadingModal when=enable_keplr_action.pending() message="Requesting Connection" />
