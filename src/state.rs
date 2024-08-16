@@ -20,12 +20,16 @@ impl GlobalState {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct WasmClient(RwSignal<Client>);
+pub struct WasmClient {
+    pub client: RwSignal<Client>,
+    pub url: RwSignal<String>,
+}
 
 impl WasmClient {
     pub fn new() -> Self {
         Self {
-            0: RwSignal::new(Client::new(GRPC_URL.to_string())),
+            client: RwSignal::new(Client::new(GRPC_URL.to_string())),
+            url: RwSignal::new(GRPC_URL.to_string()),
         }
     }
 }
@@ -34,7 +38,7 @@ impl std::ops::Deref for WasmClient {
     type Target = RwSignal<Client>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.client
     }
 }
 

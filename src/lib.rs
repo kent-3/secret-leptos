@@ -211,13 +211,13 @@ pub fn App() -> impl IntoView {
             <header>
                 <div class="flex justify-between items-center">
                     <h1>"Hello World"</h1>
-                    <Show when=move || keplr.key_info.get().is_some() fallback=|| ()>
+                    <Show when=move || keplr.key_info.get().is_some() >
                         <p class="outline outline-2 outline-offset-8 outline-neutral-500">
                             Connected as <strong>{key_name}</strong>
                         </p>
                     </Show>
                     <Show when=move || keplr.enabled.get() fallback=connect_button>
-                        <OptionsDialog />
+                        <OptionsMenu />
                     </Show>
                 </div>
                 <hr />
@@ -265,7 +265,7 @@ pub fn LoadingModal(when: Memo<bool>, #[prop(into)] message: String) -> impl Int
 }
 
 #[component]
-pub fn OptionsDialog() -> impl IntoView {
+pub fn OptionsMenu() -> impl IntoView {
     let dialog_ref = NodeRef::<Dialog>::new();
     let input_element = NodeRef::<Input>::new();
 
@@ -285,7 +285,9 @@ pub fn OptionsDialog() -> impl IntoView {
             }
             true => dialog.close(),
         },
-        None => (),
+        None => {
+            let _ = window().alert_with_message("Something is wrong!");
+        }
     };
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
@@ -321,7 +323,6 @@ pub fn OptionsDialog() -> impl IntoView {
                 </form>
             <button
                 on:click=disable_keplr
-                // class="text-red-200"
                 class="border-blue-500 text-blue-500 border-solid hover:bg-neutral-800 rounded-sm bg-[initial]"
             >
                 Disconnect Wallet
@@ -394,10 +395,10 @@ fn Home() -> impl IntoView {
     let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
 
     let token_info = Resource::new(
-        || (),
+        move || wasm_client.url.get(),
         move |_| {
             // let compute = compute.clone();
-            debug!("wasm_client changed. re-running token_info resource");
+            debug!("wasm_client changed. running token_info resource");
             let compute = ComputeQuerier::new(wasm_client.get(), options.clone());
             SendWrapper::new(async move {
                 // key not needed in this case, but we would need it for permissioned queries
