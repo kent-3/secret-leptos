@@ -43,7 +43,9 @@ fn get_enigma_utils(chain_id: &str) -> () {
 }
 
 async fn get_secret_20_viewing_key(chain_id: &str, contract_address: String) -> String {
-    let key = Keplr::get_secret_20_viewing_key(chain_id, &contract_address).await;
+    let key = Keplr::get_secret_20_viewing_key(chain_id, &contract_address)
+        .await
+        .unwrap();
 
     log!("{key}");
 

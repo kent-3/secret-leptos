@@ -4,6 +4,7 @@
 // use leptos_use::storage::use_local_storage;
 
 use ::keplr::{keplr_sys, Keplr, KeyInfo};
+use leptos::either::Either;
 use leptos::{
     html::{Dialog, Input},
     logging::log,
@@ -14,6 +15,7 @@ use leptos_router::{
     components::{Route, Router, Routes, A},
     StaticSegment,
 };
+use leptos_router_macro::path;
 use rsecret::{
     query::{bank::BankQuerier, compute::ComputeQuerier},
     secret_network_client::CreateQuerierOptions,
@@ -29,11 +31,12 @@ mod components;
 mod constants;
 mod keplr;
 mod state;
+mod tokens;
 
 use components::Spinner2;
 use constants::{CHAIN_ID, GRPC_URL, LCD_URL};
 use keplr::KeplrTests;
-pub use state::{GlobalState, KeplrSignals, WasmClient};
+use state::{GlobalState, KeplrSignals, TokenMap, WasmClient};
 
 // TODO: move custom types to seperate module
 
@@ -94,15 +97,18 @@ pub enum QueryAnswer {
 
 #[component]
 pub fn App() -> impl IntoView {
-    log!("rendering <App/>");
+    info!("rendering <App/>");
 
     // Global Context
 
     let keplr = KeplrSignals::new();
     let wasm_client = WasmClient::new();
+    let token_map = TokenMap::new();
+    debug!("Loaded {} tokens", token_map.len());
 
     provide_context(keplr);
     provide_context(wasm_client);
+    provide_context(token_map);
 
     // Event Listeners
 
@@ -115,6 +121,9 @@ pub fn App() -> impl IntoView {
 
     let keplr = use_context::<KeplrSignals>().expect("keplr signals context missing!");
     let wasm_client = use_context::<WasmClient>().expect("wasm client context missing!");
+    let token_map = use_context::<TokenMap>().expect("tokens context missing!");
+
+    let contract_address = "secret1vkq022x4q8t8kx9de3r84u669l65xnwf2lg3e6";
 
     // let update_grpc_url = move |_| {
     //     debug!("updating client_options.grpc_url");
@@ -216,7 +225,7 @@ pub fn App() -> impl IntoView {
     //     },
     // );
 
-    on_cleanup(move || keplr_keystorechange_handle.remove());
+    Owner::on_cleanup(move || keplr_keystorechange_handle.remove());
 
     // HTML Elements
 
@@ -239,7 +248,7 @@ pub fn App() -> impl IntoView {
             <header>
                 <div class="flex justify-between items-center">
                     <h1>"Hello World"</h1>
-                    <Show when=move || keplr.key_info.get().is_some() >
+                    <Show when=move || keplr.key_info.get().is_some()>
                         <p class="outline outline-2 outline-offset-8 outline-neutral-500">
                             Connected as <strong>{key_name}</strong>
                         </p>
@@ -250,17 +259,15 @@ pub fn App() -> impl IntoView {
                 </div>
                 <hr />
                 <nav>
-                    <A exact=true href="/secret-leptos/">
-                        "Home"
-                    </A>
+                    <A href="/secret-leptos/">"Home"</A>
                     <A href="/secret-leptos/keplr">"Keplr"</A>
                 </nav>
                 <hr />
             </header>
             <main class="outline outline-1 outline-offset-8 outline-neutral-500">
                 <Routes fallback=|| "This page could not be found.">
-                    <Route path=StaticSegment("/secret-leptos/") view=|| view! { <Home /> } />
-                    <Route path=StaticSegment("/secret-leptos/keplr") view=|| view! { <KeplrTests /> } />
+                    <Route path=path!("secret-leptos") view=|| view! { <Home /> } />
+                    <Route path=path!("secret-leptos/keplr") view=|| view! { <KeplrTests /> } />
                 </Routes>
             </main>
             <LoadingModal when=enable_keplr_action.pending() message="Requesting Connection" />
@@ -341,14 +348,13 @@ pub fn OptionsMenu() -> impl IntoView {
     view! {
         <button on:click=toggle_options_menu>"Options"</button>
         <dialog node_ref=dialog_ref class="flex flex-col gap-4 items-center">
-            <button on:click=toggle_options_menu class="self-stretch">"Close Menu"</button>
-                <form class="flex gap-4" on:submit=on_submit>
-                    <input type="text"
-                        value=GRPC_URL
-                        node_ref=input_element
-                    />
-                    <input type="submit" value="Submit" class="min-w-fit"/>
-                </form>
+            <button on:click=toggle_options_menu class="self-stretch">
+                "Close Menu"
+            </button>
+            <form class="flex gap-4" on:submit=on_submit>
+                <input type="text" value=GRPC_URL node_ref=input_element />
+                <input type="submit" value="Submit" class="min-w-fit" />
+            </form>
             <button
                 on:click=disable_keplr
                 class="border-blue-500 text-blue-500 border-solid hover:bg-neutral-800 rounded-sm bg-[initial]"
@@ -361,12 +367,11 @@ pub fn OptionsMenu() -> impl IntoView {
 
 #[component]
 fn Home() -> impl IntoView {
-    log!("rendering <Home/>");
+    info!("rendering <Home/>");
 
     let keplr = use_context::<KeplrSignals>().expect("keplr signals context missing!");
     let wasm_client = use_context::<WasmClient>().expect("wasm client context missing!");
-
-    Effect::new(move |_| debug!("{:#?}", wasm_client.get()));
+    let token_map = use_context::<TokenMap>().expect("tokens context missing!");
 
     // whenever the key store changes, this will re-set 'is_keplr_enabled' to true, triggering a
     // reload of everything subscribed to that signal
@@ -386,8 +391,46 @@ fn Home() -> impl IntoView {
         }
     });
 
-    // let client = Client::new("https://grpc.mainnet.secretsaturn.net".to_string());
-    // let bank = BankQuerier::new(client.clone());
+    let viewing_keys = Resource::new(keplr.key_info, move |_| {
+        let tokens = token_map.clone();
+        SendWrapper::new(async move {
+            let enabled = keplr.enabled.get_untracked();
+            if enabled {
+                debug!("doing viewing_keys thing");
+                let mut keys = Vec::new();
+                for (_, token) in tokens.iter() {
+                    let key_result =
+                        Keplr::get_secret_20_viewing_key(CHAIN_ID, &token.contract_address)
+                            .await
+                            .map_err(|error| Error::GenericError(error.to_string()));
+
+                    if let Ok(key) = key_result {
+                        keys.push((
+                            token.metadata.name.clone(),
+                            token.contract_address.clone(),
+                            key,
+                        ));
+                    }
+                }
+                keys
+            } else {
+                vec![]
+            }
+        })
+    });
+
+    let viewing_keys_list = move || {
+        Suspend::new(async move {
+            viewing_keys
+                .await
+                .into_iter()
+                .map(|(name, address, key)| {
+                    debug!("{name}");
+                    view! { <li>{name} ", " {address} ", " {key}</li> }
+                })
+                .collect_view()
+        })
+    };
 
     let (user_balance, set_user_balance) = signal::<Option<String>>(None);
     Effect::new(move |_| {
@@ -411,6 +454,27 @@ fn Home() -> impl IntoView {
         }
     });
 
+    let user_balance2 = Resource::new(keplr.key_info, move |key| {
+        SendWrapper::new(async move {
+            if let Some(key) = key {
+                let bank = BankQuerier::new(wasm_client.get_untracked());
+                match bank.balance(key.bech32_address, "uscrt").await {
+                    Ok(balance) => {
+                        log!("{balance:#?}");
+                        let balance: Coin = balance.balance.unwrap().into();
+                        Ok(balance.to_string())
+                    }
+                    Err(error) => {
+                        error!("{error}");
+                        Err(Error::GenericError(error.to_string()))
+                    }
+                }
+            } else {
+                Err(Error::GenericError("no key".to_string()))
+            }
+        })
+    });
+
     let encryption_utils = secretrs::EncryptionUtils::new(None, "secret-4").unwrap();
     let options = CreateQuerierOptions {
         url: "https://grpc.mainnet.secretsaturn.net",
@@ -422,22 +486,19 @@ fn Home() -> impl IntoView {
     let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852";
     let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
 
-    let token_info = Resource::new(
-        move || wasm_client.url.get(),
-        move |_| {
-            // let compute = compute.clone();
-            debug!("wasm_client changed. running token_info resource");
-            let compute = ComputeQuerier::new(wasm_client.get(), options.clone());
-            SendWrapper::new(async move {
-                // key not needed in this case, but we would need it for permissioned queries
-                let query = QueryMsg::TokenInfo {};
-                compute
-                    .query_secret_contract(contract_address, code_hash, query)
-                    .await
-                    .map_err(|error| Error::GenericError(error.to_string()))
-            })
-        },
-    );
+    let token_info = Resource::new(wasm_client.url, move |_| {
+        // let compute = compute.clone();
+        debug!("loading token_info resource");
+        let compute = ComputeQuerier::new(wasm_client.get_untracked(), options.clone());
+        SendWrapper::new(async move {
+            // key not needed in this case, but we would need it for permissioned queries
+            let query = QueryMsg::TokenInfo {};
+            compute
+                .query_secret_contract(contract_address, code_hash, query)
+                .await
+                .map_err(|error| Error::GenericError(error.to_string()))
+        })
+    });
 
     view! {
         <Show when=move || keplr.enabled.get() fallback=|| view! { <p>Nothing to see here</p> }>
@@ -445,6 +506,9 @@ fn Home() -> impl IntoView {
             <Show when=move || user_balance.get().is_some() fallback=|| ()>
                 {move || user_balance.get()}
             </Show>
+            <Suspense>
+                <ul> {viewing_keys_list} </ul>
+            </Suspense>
             // the fallback receives a signal containing current errors
             <ErrorBoundary fallback=|errors| {
                 view! {
@@ -464,6 +528,7 @@ fn Home() -> impl IntoView {
                 }
             }>
                 <p>{move || token_info.get()}</p>
+                <p>{move || user_balance2.get()}</p>
             </ErrorBoundary>
         </Show>
     }
@@ -473,7 +538,7 @@ fn Home() -> impl IntoView {
 fn Modal(// Signal that will be toggled when the button is clicked.
     // setter: WriteSignal<bool>,
 ) -> impl IntoView {
-    log!("rendering <Modal/>");
+    info!("rendering <Modal/>");
 
     on_cleanup(|| {
         log!("cleaning up <Modal/>");
