@@ -1,32 +1,18 @@
 use crate::{
     constants::{CHAIN_ID, GRPC_URL},
+    error::Error,
     tokens::ContractInfo,
 };
 use ::keplr::Keplr;
 use ::keplr::KeyInfo;
+use codee::string::JsonSerdeCodec;
 use leptos::prelude::*;
 use send_wrapper::SendWrapper;
 use std::collections::HashMap;
 use tonic_web_wasm_client::Client;
 use tracing::debug;
 
-// Still deciding what else to include here.
-#[derive(Copy, Clone, Debug)]
-pub struct GlobalState {
-    pub keplr_enabled: RwSignal<bool, SyncStorage>,
-    pub my_address: RwSignal<String, SyncStorage>,
-}
-
-impl GlobalState {
-    pub fn new() -> Self {
-        Self {
-            keplr_enabled: RwSignal::new(false),
-            my_address: RwSignal::new("unknown".to_string()),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct WasmClient {
     pub client: RwSignal<Client>,
     pub url: RwSignal<String>,
@@ -76,103 +62,27 @@ impl AsRef<HashMap<String, ContractInfo>> for TokenMap {
     }
 }
 
-// #[derive(Copy, Clone)]
-// pub struct ClientSignals {
-//     pub grpc_url: RwSignal<String>,
-//     pub client: RwSignal<Client>,
-// }
-//
-// impl ClientSignals {
-//     pub fn new() -> Self {
-//         Self {
-//             grpc_url: RwSignal::new(GRPC_URL.to_string()),
-//             client: RwSignal::new(Client::new(GRPC_URL.to_string())),
-//         }
-//     }
-// }
-//
-// impl Default for ClientSignals {
-//     fn default() -> Self {
-//         Self {
-//             grpc_url: RwSignal::new(GRPC_URL.to_string()),
-//             client: RwSignal::new(Client::new(GRPC_URL.to_string())),
-//         }
-//     }
-// }
-
 #[derive(Copy, Clone)]
 pub struct KeplrSignals {
     pub enabled: RwSignal<bool>,
-    pub key_info: RwSignal<Option<KeyInfo>>,
+    pub key_info: Resource<Result<KeyInfo, Error>, JsonSerdeCodec>, // pub key_info: RwSignal<Option<KeyInfo>>,
 }
 
 impl KeplrSignals {
     pub fn new() -> Self {
-        // TODO: make keplr crate return actual Errors, not Strings
+        let enabled = RwSignal::new(false);
+        let key_info = Resource::new(enabled, move |enabled| {
+            SendWrapper::new(async move {
+                if enabled {
+                    debug!("happy path");
+                    Keplr::get_key(CHAIN_ID).await.map_err(Into::into)
+                } else {
+                    debug!("sad path");
+                    Err(Error::generic("sad"))
+                }
+            })
+        });
 
-        // let enabled = RwSignal::new(false);
-        // let key_info = Resource::new(enabled, move |enabled| {
-        //     SendWrapper::new(async move {
-        //         if enabled {
-        //             debug!("happy path");
-        //             Keplr::get_key(CHAIN_ID).await
-        //         } else {
-        //             debug!("sad path");
-        //             Err(())
-        //         }
-        //     })
-        // });
-
-        Self {
-            enabled: RwSignal::new(false),
-            key_info: RwSignal::new(None),
-        }
+        Self { enabled, key_info }
     }
 }
-
-impl Default for KeplrSignals {
-    fn default() -> Self {
-        Self {
-            enabled: RwSignal::new(false),
-            key_info: RwSignal::new(None),
-        }
-    }
-}
-
-// not sure this a good approach...
-// use secretrs::clients::AuthQueryClient;
-// #[derive(Clone, Debug)]
-// pub struct SecretQueryClient {
-//     pub auth: AuthQueryClient<::tonic_web_wasm_client::Client>,
-// }
-//
-// impl SecretQueryClient {
-//     pub fn new() -> Self {
-//         let web_client = ::tonic_web_wasm_client::Client::new(GRPC_URL.to_string());
-//
-//         let mut auth = AuthQueryClient::new(web_client);
-//
-//         Self { auth }
-//     }
-// }
-
-// Still deciding what else to include here.
-// #[derive(Clone, Debug)]
-// pub struct MyAccount {
-//     pub my_client: RwSignal<SecretNetworkClient>,
-// }
-//
-// impl MyAccount {
-//     pub fn new() -> Self {
-//         // Start out with a readonly client. Update to a signing client when connected.
-//         let client_options = ClientOptionsBuilder::new()
-//             .url(LCD_URL)
-//             .chain_id(CHAIN_ID)
-//             .build();
-//         let client = SecretNetworkClient::new(&client_options);
-//
-//         Self {
-//             my_client: RwSignal::new(client),
-//         }
-//     }
-// }

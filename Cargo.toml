@@ -40,12 +40,12 @@ leptos_meta = { version = "0.7.0-beta", git = "https://github.com/leptos-rs/lept
 
 # Leptos extenstions and related
 # leptos-use = { git = "https://github.com/Synphonyte/leptos-use.git", branch = "leptos-0.7" }
-# codee = { version = "0.1", features = [
-#   "json_serde",
-#   "msgpack_serde",
-#   "base64",
-#   "prost",
-# ] }
+codee = { version = "0.1", features = [
+  "json_serde",
+  "msgpack_serde",
+  "base64",
+  "prost",
+] }
 # leptonic = { git = "https://github.com/lpotthast/leptonic.git", branch = "main" }
 # thaw = { version = "0.4.0-alpha", git = "https://github.com/thaw-ui/thaw.git", branch = "thaw/fluent", features = [
 #   "csr",
@@ -82,6 +82,6 @@ tracing-subscriber = "0.3"
 tracing-subscriber-wasm = "0.1"
 
 # Local
-keplr = { path = "../keplr" }
+keplr = { path = "../keplr/keplr" }
 rsecret = { path = "../secret-clients/rsecret" }
 secretrs = { version = "0.1" }
