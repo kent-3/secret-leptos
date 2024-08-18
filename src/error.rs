@@ -8,6 +8,9 @@ pub enum Error {
 
     #[error(transparent)]
     KeplrError(#[from] ::keplr::Error),
+
+    #[error("Keplr is not enabled!")]
+    KeplrDisabled,
 }
 
 impl From<rsecret::Error> for Error {

@@ -1,10 +1,11 @@
-// #![allow(unused)]
+#![allow(unused)]
 
 // use codee::string::FromToStringCodec;
 // use leptos_use::storage::use_local_storage;
 
 use ::keplr::{keplr_sys, Keplr, KeyInfo};
 use leptos::{
+    ev::MouseEvent,
     html::{Dialog, Input},
     logging::log,
     prelude::*,
@@ -161,7 +162,7 @@ pub fn App() -> impl IntoView {
 
     // Node references
 
-    // let dialog_ref = NodeRef::<Dialog>::new();
+    let options_dialog_ref = NodeRef::<Dialog>::new();
 
     // Effects
 
@@ -191,9 +192,21 @@ pub fn App() -> impl IntoView {
         }
     };
 
-    // let disconnect_button = move || {
-    //     view! { <button on:click=disable_keplr>Disconnect Wallet</button> }
-    // };
+    let toggle_options_menu = move |_| match options_dialog_ref.get() {
+        Some(dialog) => match dialog.open() {
+            false => {
+                let _ = dialog.show_modal();
+            }
+            true => dialog.close(),
+        },
+        None => {
+            let _ = window().alert_with_message("Something is wrong!");
+        }
+    };
+
+    let options_button = move || {
+        view! { <button on:click=toggle_options_menu>"Options"</button> }
+    };
 
     let key_name = move || {
         keplr
@@ -207,7 +220,7 @@ pub fn App() -> impl IntoView {
         <Router>
             <header>
                 <div class="flex justify-between items-center">
-                    <h1>"Hello World"</h1>
+                    <h1>"Secret Leptos"</h1>
                     // terrible, but it works...
                     <Show when=move || {
                         keplr.key_info.get().and_then(|foo| Some(foo.is_ok())).unwrap_or_default()
@@ -217,7 +230,7 @@ pub fn App() -> impl IntoView {
                         </p>
                     </Show>
                     <Show when=move || keplr.enabled.get() fallback=connect_button>
-                        <OptionsMenu />
+                        {options_button}
                     </Show>
                 </div>
                 <hr />
@@ -234,6 +247,7 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </main>
             <LoadingModal when=enable_keplr_action.pending() message="Requesting Connection" />
+            <OptionsMenu dialog_ref=options_dialog_ref toggle_menu=toggle_options_menu />
         </Router>
     }
 }
@@ -253,7 +267,7 @@ pub fn LoadingModal(when: Memo<bool>, #[prop(into)] message: String) -> impl Int
     });
 
     view! {
-        <dialog node_ref=dialog_ref class="flex items-center">
+        <dialog node_ref=dialog_ref class="absolute inset-0 flex items-center">
             <div class="inline-flex items-center">
                 <Spinner2 size="h-8 w-8" />
                 <div class="font-bold">{message}</div>
@@ -263,8 +277,13 @@ pub fn LoadingModal(when: Memo<bool>, #[prop(into)] message: String) -> impl Int
 }
 
 #[component]
-pub fn OptionsMenu() -> impl IntoView {
-    let dialog_ref = NodeRef::<Dialog>::new();
+pub fn OptionsMenu(
+    dialog_ref: NodeRef<Dialog>,
+    toggle_menu: impl Fn(MouseEvent) + 'static,
+) -> impl IntoView {
+    info!("rendering <OptionsMenu/>");
+
+    // let dialog_ref = NodeRef::<Dialog>::new();
     let input_element = NodeRef::<Input>::new();
 
     let keplr = use_context::<KeplrSignals>().expect("keplr signals context missing!");
@@ -274,18 +293,6 @@ pub fn OptionsMenu() -> impl IntoView {
         keplr_sys::disable(CHAIN_ID);
         keplr.enabled.set(false);
         // keplr.key_info.set(None);
-    };
-
-    let toggle_options_menu = move |_| match dialog_ref.get() {
-        Some(dialog) => match dialog.open() {
-            false => {
-                let _ = dialog.show_modal();
-            }
-            true => dialog.close(),
-        },
-        None => {
-            let _ = window().alert_with_message("Something is wrong!");
-        }
     };
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
@@ -309,9 +316,8 @@ pub fn OptionsMenu() -> impl IntoView {
     };
 
     view! {
-        <button on:click=toggle_options_menu>"Options"</button>
-        <dialog node_ref=dialog_ref class="flex flex-col gap-4 items-center">
-            <button on:click=toggle_options_menu class="self-stretch">
+        <dialog node_ref=dialog_ref class="absolute inset-0 flex flex-col gap-4 items-center">
+            <button on:click=toggle_menu class="self-stretch">
                 "Close Menu"
             </button>
             <form class="flex gap-4" on:submit=on_submit>
@@ -362,9 +368,8 @@ fn Home() -> impl IntoView {
         move |_| {
             let tokens = token_map.clone();
             SendWrapper::new(async move {
-                let enabled = keplr.enabled.get_untracked();
-                if enabled {
-                    debug!("doing viewing_keys thing");
+                if keplr.enabled.get_untracked() {
+                    debug!("gathering viewing_keys");
                     let mut keys = Vec::new();
                     for (_, token) in tokens.iter() {
                         let key_result =
@@ -393,8 +398,15 @@ fn Home() -> impl IntoView {
                 .await
                 .into_iter()
                 .map(|(name, address, key)| {
-                    debug!("{name}");
-                    view! { <li>{name} ", " {address} ", " {key}</li> }
+                    view! {
+                        <li>
+                            <strong>{name}</strong>
+                            ", "
+                            {address}
+                            ": "
+                            {key}
+                        </li>
+                    }
                 })
                 .collect_view()
         })
@@ -451,13 +463,11 @@ fn Home() -> impl IntoView {
 
     view! {
         <Show when=move || keplr.enabled.get() fallback=|| view! { <p>Nothing to see here</p> }>
-            <pre>{move || format!("{:#?}", keplr.key_info.get())}</pre>
-            <Show when=move || user_balance.get().is_some() fallback=|| ()>
-                {move || user_balance.get()}
-            </Show>
-            <Suspense>
-                <ul>{viewing_keys_list}</ul>
-            </Suspense>
+            <pre>
+                {move || {
+                    format!("{:#?}", keplr.key_info.get().and_then(Result::ok).unwrap_or_default())
+                }}
+            </pre>
             // the fallback receives a signal containing current errors
             <ErrorBoundary fallback=|errors| {
                 view! {
@@ -479,6 +489,10 @@ fn Home() -> impl IntoView {
                 <p>{move || token_info.get()}</p>
                 <p>{move || user_balance.get()}</p>
             </ErrorBoundary>
+            <Suspense>
+                <h2>"Viewing Keys"</h2>
+                <ul class="overflow-x-auto">{viewing_keys_list}</ul>
+            </Suspense>
         </Show>
     }
 }

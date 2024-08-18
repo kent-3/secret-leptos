@@ -65,7 +65,8 @@ impl AsRef<HashMap<String, ContractInfo>> for TokenMap {
 #[derive(Copy, Clone)]
 pub struct KeplrSignals {
     pub enabled: RwSignal<bool>,
-    pub key_info: Resource<Result<KeyInfo, Error>, JsonSerdeCodec>, // pub key_info: RwSignal<Option<KeyInfo>>,
+    pub key_info: Resource<Result<KeyInfo, Error>, JsonSerdeCodec>,
+    // pub key_info: RwSignal<Option<KeyInfo>>,
 }
 
 impl KeplrSignals {
@@ -74,11 +75,10 @@ impl KeplrSignals {
         let key_info = Resource::new(enabled, move |enabled| {
             SendWrapper::new(async move {
                 if enabled {
-                    debug!("happy path");
+                    debug!("keplr is enabled! getting key_info");
                     Keplr::get_key(CHAIN_ID).await.map_err(Into::into)
                 } else {
-                    debug!("sad path");
-                    Err(Error::generic("sad"))
+                    Err(Error::KeplrDisabled)
                 }
             })
         });
