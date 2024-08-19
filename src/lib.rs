@@ -94,13 +94,6 @@ pub enum QueryAnswer {
 pub fn App() -> impl IntoView {
     info!("rendering <App/>");
 
-    spawn_local(async {
-        match Keplr::ping().await {
-            Ok(_) => debug!("Keplr is available!"),
-            Err(_) => debug!("Keplr is not available!"),
-        }
-    });
-
     // Global Context
 
     let keplr = KeplrSignals::new();
@@ -132,7 +125,10 @@ pub fn App() -> impl IntoView {
 
     let enable_keplr_action: Action<(), bool, SyncStorage> =
         Action::new_unsync_with_value(Some(false), move |_: &()| async move {
-            if Keplr::ping().await.is_err() {
+            let keplr_extension = js_sys::Reflect::get(&window(), &JsValue::from_str("keplr"))
+                .expect("unable to check for `keplr` property");
+
+            if keplr_extension.is_undefined() || keplr_extension.is_null() {
                 window()
                     .alert_with_message("keplr not found")
                     .expect("alert failed");
