@@ -3,7 +3,7 @@
 // use codee::string::FromToStringCodec;
 // use leptos_use::storage::use_local_storage;
 
-use keplr::{keplr_sys, Keplr, KeyInfo};
+use keplr::{keplr_sys, Keplr, Key};
 use leptos::{
     ev::MouseEvent,
     html::{Dialog, Input},
@@ -30,7 +30,6 @@ mod error;
 mod keplr;
 mod prelude;
 mod state;
-mod tokens;
 mod utils;
 
 use components::Spinner2;
@@ -41,6 +40,7 @@ use state::{KeplrSignals, TokenMap, WasmClient};
 
 // TODO: move custom types to seperate module
 
+// TODO: include the decimals somehow, and use that in the Display trait
 #[derive(Clone, Debug)]
 pub struct Coin {
     pub denom: String,
@@ -62,33 +62,37 @@ impl std::fmt::Display for Coin {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    TokenInfo {},
-    MemberCode { address: String, key: String },
-    ValidCodes { codes: Vec<String> },
-}
+// TODO: import these types from secret-toolkit?
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryAnswer {
-    TokenInfo {
-        name: String,
-        symbol: String,
-        decimals: u8,
-        total_supply: String,
-    },
-    MemberCode {
-        code: String,
-    },
-    ValidCodes {
-        codes: Vec<String>,
-    },
-    ViewingKeyError {
-        msg: String,
-    },
-}
+use secret_toolkit_snip20::{QueryMsg, TokenInfoResponse};
+
+// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+// #[serde(rename_all = "snake_case")]
+// pub enum QueryMsg {
+//     TokenInfo {},
+//     MemberCode { address: String, key: String },
+//     ValidCodes { codes: Vec<String> },
+// }
+//
+// #[derive(Serialize, Deserialize, Debug)]
+// #[serde(rename_all = "snake_case")]
+// pub enum QueryAnswer {
+//     TokenInfo {
+//         name: String,
+//         symbol: String,
+//         decimals: u8,
+//         total_supply: String,
+//     },
+//     MemberCode {
+//         code: String,
+//     },
+//     ValidCodes {
+//         codes: Vec<String>,
+//     },
+//     ViewingKeyError {
+//         msg: String,
+//     },
+// }
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -160,7 +164,7 @@ pub fn App() -> impl IntoView {
     // let disable_keplr = move |_| {
     //     keplr_sys::disable(CHAIN_ID);
     //     keplr.enabled.set(false);
-    //     keplr.key_info.set(None);
+    //     keplr.key.set(None);
     // };
 
     // Node references
@@ -199,13 +203,7 @@ pub fn App() -> impl IntoView {
         }
     };
 
-    let key_name = move || {
-        keplr
-            .key_info
-            .get()
-            .and_then(Result::ok)
-            .map(|key_info| key_info.name)
-    };
+    let key_name = move || keplr.key.get().and_then(Result::ok).map(|key| key.name);
 
     view! {
         <Router>
@@ -214,7 +212,7 @@ pub fn App() -> impl IntoView {
                     <h1>"Secret Leptos"</h1>
                     // terrible, but it works...
                     <Show when=move || {
-                        keplr.key_info.get().map(|foo| foo.is_ok()).unwrap_or_default()
+                        keplr.key.get().map(|foo| foo.is_ok()).unwrap_or_default()
                     }>
                         <p class="text-sm outline outline-2 outline-offset-8 outline-neutral-500">
                             "Connected as "<strong>{key_name}</strong>
@@ -243,7 +241,9 @@ pub fn App() -> impl IntoView {
                 </nav>
                 <hr />
             </header>
-            <main class="outline outline-1 outline-offset-8 outline-neutral-500">
+            <main
+                // class="outline outline-1 outline-offset-8 outline-neutral-500"
+            >
                 <Routes fallback=|| "This page could not be found.">
                     <Route path=path!("secret-leptos") view=|| view! { <Home /> } />
                     <Route path=path!("secret-leptos/keplr") view=|| view! { <KeplrTests /> } />
@@ -295,7 +295,7 @@ pub fn OptionsMenu(
     let disable_keplr = move |_| {
         keplr_sys::disable(CHAIN_ID);
         keplr.enabled.set(false);
-        // keplr.key_info.set(None);
+        // keplr.key.set(None);
     };
 
     let on_submit = move |ev: leptos::ev::SubmitEvent| {
@@ -360,14 +360,14 @@ fn Home() -> impl IntoView {
     // Effect::new(move |_| {
     //     if keplr.enabled.get() {
     //         spawn_local(async move {
-    //             let key_info: Option<KeyInfo> = Keplr::get_key(CHAIN_ID).await.ok();
-    //             keplr.key_info.set(key_info);
+    //             let key: Option<Key> = Keplr::get_key(CHAIN_ID).await.ok();
+    //             keplr.key.set(key);
     //         })
     //     }
     // });
 
     let viewing_keys = Resource::new(
-        move || keplr.key_info.get(),
+        move || keplr.key.track(),
         move |_| {
             let tokens = token_map.clone();
             SendWrapper::new(async move {
@@ -415,9 +415,9 @@ fn Home() -> impl IntoView {
         })
     };
 
-    // TODO: update this since keplr.key_info is a Result now
+    // TODO: update this since keplr.key is a Result now
     let user_balance = Resource::new(
-        move || keplr.key_info.get(),
+        move || keplr.key.get(),
         move |key| {
             SendWrapper::new(async move {
                 if let Some(Ok(key)) = key {
@@ -441,6 +441,7 @@ fn Home() -> impl IntoView {
     );
 
     let encryption_utils = secretrs::EncryptionUtils::new(None, "secret-4").unwrap();
+    // TODO: revisit this. url is not needed, EncryptionUtils should be a trait
     let options = CreateQuerierOptions {
         url: "https://grpc.mainnet.secretsaturn.net",
         chain_id: CHAIN_ID,
@@ -449,28 +450,29 @@ fn Home() -> impl IntoView {
 
     let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852";
     let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
-
-    let token_info = Resource::new(wasm_client.url, move |_| {
-        // let compute = compute.clone();
-        debug!("loading token_info resource");
-        let compute = ComputeQuerier::new(wasm_client.get_untracked(), options.clone());
-        SendWrapper::new(async move {
-            // key not needed in this case, but we would need it for permissioned queries
-            let query = QueryMsg::TokenInfo {};
-            compute
-                .query_secret_contract(contract_address, code_hash, query)
-                .await
-                .map_err(Error::generic)
-        })
-    });
+    let token_info = Resource::new(
+        || (),
+        move |_| {
+            debug!("loading token_info resource");
+            let compute = ComputeQuerier::new(wasm_client.get_untracked(), options.clone());
+            SendWrapper::new(async move {
+                let query = QueryMsg::TokenInfo {};
+                compute
+                    .query_secret_contract(contract_address, code_hash, query)
+                    .await
+                    .map_err(Error::generic)
+            })
+        },
+    );
 
     view! {
         <Show when=move || keplr.enabled.get() fallback=|| view! { <p>Nothing to see here</p> }>
             <pre>
                 {move || {
-                    format!("{:#?}", keplr.key_info.get().and_then(Result::ok).unwrap_or_default())
+                    format!("{:#?}", keplr.key.get().and_then(Result::ok).unwrap_or_default())
                 }}
             </pre>
+            // Errors related to general chain queries
             // the fallback receives a signal containing current errors
             <ErrorBoundary fallback=|errors| {
                 view! {
@@ -490,6 +492,25 @@ fn Home() -> impl IntoView {
                 }
             }>
                 <p>{move || token_info.get()}</p>
+            </ErrorBoundary>
+            // Errors from user-specific queries should have a separate ErrorBoundary
+            <ErrorBoundary fallback=|errors| {
+                view! {
+                    <div class="error">
+                        <p>"Errors: "</p>
+                        // we can render a list of errors as strings, if we'd like
+                        <ul>
+                            {move || {
+                                errors
+                                    .get()
+                                    .into_iter()
+                                    .map(|(_, e)| view! { <li>{e.to_string()}</li> })
+                                    .collect_view()
+                            }}
+                        </ul>
+                    </div>
+                }
+            }>
                 <p>{move || user_balance.get()}</p>
             </ErrorBoundary>
             <Suspense>
@@ -524,7 +545,7 @@ fn Modal(// Signal that will be toggled when the button is clicked.
     let is_keplr_enabled = move || keplr.enabled.get();
     let my_address = move || {
         keplr
-            .key_info
+            .key
             .get()
             .and_then(Result::ok)
             .unwrap_or_default()

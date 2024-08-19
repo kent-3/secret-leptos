@@ -2846,6 +2846,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "secret-cosmwasm-storage"
+version = "1.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb43da2cb72a53b16ea1555bca794fb828b48ab24ebeb45f8e26f1881c45a783"
+dependencies = [
+ "secret-cosmwasm-std",
+ "serde",
+]
+
+[[package]]
 name = "secret-leptos"
 version = "0.1.0"
 dependencies = [
@@ -2861,6 +2871,7 @@ dependencies = [
  "leptos_router",
  "leptos_router_macro 0.7.0-beta2",
  "rsecret",
+ "secret-toolkit-snip20",
  "secretrs",
  "send_wrapper",
  "serde",
@@ -2889,6 +2900,30 @@ dependencies = [
  "prost",
  "prost-types",
  "tonic",
+]
+
+[[package]]
+name = "secret-toolkit-snip20"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8144a11df9a75adf42acd645f938eb2c1ab508d6672033eb84b1e672247d2f05"
+dependencies = [
+ "schemars",
+ "secret-cosmwasm-std",
+ "secret-toolkit-utils",
+ "serde",
+]
+
+[[package]]
+name = "secret-toolkit-utils"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83f1cba2e70fd701e3dfc6072807c02eeeb9776bee49e346a9c7745d84ff40c8"
+dependencies = [
+ "schemars",
+ "secret-cosmwasm-std",
+ "secret-cosmwasm-storage",
+ "serde",
 ]
 
 [[package]]

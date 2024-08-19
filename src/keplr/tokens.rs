@@ -1,8 +1,6 @@
-#![allow(unused)]
-
 use serde::{Deserialize, Serialize};
-use serde_json::from_slice;
 use std::collections::HashMap;
+use tracing::debug;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -21,11 +19,11 @@ pub struct ContractInfo {
 }
 
 pub fn keplr_contract_registry_tokens() -> HashMap<String, ContractInfo> {
-    let json = include_bytes!(concat!(env!("OUT_DIR"), "/token_map.json"));
+    let json = include_str!(concat!(env!("OUT_DIR"), "/token_map.json"));
     let token_map: HashMap<String, ContractInfo> =
-        from_slice(json).expect("Failed to deserialize token_map");
+        serde_json::from_str(json).expect("Failed to deserialize token_map");
 
-    tracing::debug!("Loaded {} tokens", token_map.len());
+    debug!("Loaded {} tokens", token_map.len());
 
     token_map
 }

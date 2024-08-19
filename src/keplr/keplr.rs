@@ -65,7 +65,7 @@ pub type Coin = String;
 
 #[derive(Serialize, Deserialize, Clone, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyInfo {
+pub struct Key {
     /// Name of the selected key store.
     pub name: String,
     pub algo: String,
@@ -80,9 +80,9 @@ pub struct KeyInfo {
     pub is_keystone: bool,
 }
 
-impl std::fmt::Debug for KeyInfo {
+impl std::fmt::Debug for Key {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("KeyInfo")
+        f.debug_struct("Key")
             .field("name", &self.name)
             .field("algo", &self.algo)
             .field("pub_key", &BASE64_STANDARD.encode(&self.pub_key)) // Convert pub_key to base64
@@ -110,10 +110,10 @@ impl Keplr {
         enable(chain_ids).await.map_err(Into::into)
     }
 
-    pub async fn get_key(chain_id: &str) -> Result<KeyInfo, Error> {
+    pub async fn get_key(chain_id: &str) -> Result<Key, Error> {
         get_key(chain_id)
             .await
-            .and_then(|key| Ok(serde_wasm_bindgen::from_value::<KeyInfo>(key)?))
+            .and_then(|key| Ok(serde_wasm_bindgen::from_value::<Key>(key)?))
             .map_err(Into::into)
     }
 

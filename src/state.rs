@@ -1,5 +1,8 @@
-use crate::keplr::{Keplr, KeyInfo};
-use crate::{constants::*, error::Error, tokens::ContractInfo};
+use crate::{
+    constants::*,
+    error::Error,
+    keplr::{tokens::ContractInfo, Keplr, Key},
+};
 use codee::string::JsonSerdeCodec;
 use leptos::prelude::*;
 use send_wrapper::SendWrapper;
@@ -35,9 +38,9 @@ pub struct TokenMap(HashMap<String, ContractInfo>);
 
 impl TokenMap {
     pub fn new() -> Self {
-        let json = include_bytes!(concat!(env!("OUT_DIR"), "/token_map.json"));
+        let json = include_str!(concat!(env!("OUT_DIR"), "/token_map.json"));
         let token_map: HashMap<String, ContractInfo> =
-            serde_json::from_slice(json).expect("Failed to deserialize token_map");
+            serde_json::from_str(json).expect("Failed to deserialize token_map");
 
         Self(token_map)
     }
@@ -60,17 +63,17 @@ impl AsRef<HashMap<String, ContractInfo>> for TokenMap {
 #[derive(Copy, Clone)]
 pub struct KeplrSignals {
     pub enabled: RwSignal<bool>,
-    pub key_info: Resource<Result<KeyInfo, Error>, JsonSerdeCodec>,
-    // pub key_info: RwSignal<Option<KeyInfo>>,
+    pub key: LocalResource<Result<Key, Error>>,
+    // pub key: RwSignal<Option<Key>>,
 }
 
 impl KeplrSignals {
     pub fn new() -> Self {
         let enabled = RwSignal::new(false);
-        let key_info = Resource::new(enabled, move |enabled| {
+        let key = LocalResource::new(move || {
             SendWrapper::new(async move {
-                if enabled {
-                    debug!("keplr is enabled! getting key_info");
+                if enabled.get() {
+                    debug!("keplr is enabled! getting key");
                     Keplr::get_key(CHAIN_ID).await.map_err(Into::into)
                 } else {
                     Err(Error::KeplrDisabled)
@@ -78,6 +81,6 @@ impl KeplrSignals {
             })
         });
 
-        Self { enabled, key_info }
+        Self { enabled, key }
     }
 }

@@ -1,4 +1,4 @@
-use crate::keplr::{suggest_chain_types::*, Account, Keplr, KeyInfo};
+use crate::keplr::{suggest_chain_types::*, Account, Keplr, Key};
 use crate::CHAIN_ID;
 use keplr_sys; // normally you wouldn't use keplr_sys directly
 use leptos::prelude::*;
@@ -23,11 +23,11 @@ async fn get_account(chain_id: &str) -> Account {
     account
 }
 
-async fn get_key(chain_id: &str) -> KeyInfo {
+async fn get_key(chain_id: &str) -> Key {
     let result = Keplr::get_key(chain_id).await;
 
     match result {
-        Ok(ref key_info) => log!("{key_info:#?}"),
+        Ok(ref key) => log!("{key:#?}"),
         Err(ref e) => log!("{e}"),
     }
 
@@ -78,7 +78,7 @@ pub fn KeplrTests() -> impl IntoView {
         Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
     let get_account_action: Action<(), Account, SyncStorage> =
         Action::new_unsync(|_: &()| get_account(CHAIN_ID));
-    let get_key_action: Action<(), KeyInfo, SyncStorage> =
+    let get_key_action: Action<(), Key, SyncStorage> =
         Action::new_unsync(|_: &()| get_key(CHAIN_ID));
     let get_viewing_key_action: Action<String, String, SyncStorage> =
         Action::new_unsync(|input: &String| {
