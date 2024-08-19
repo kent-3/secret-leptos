@@ -1,10 +1,5 @@
-use crate::{
-    constants::{CHAIN_ID, GRPC_URL},
-    error::Error,
-    tokens::ContractInfo,
-};
-use ::keplr::Keplr;
-use ::keplr::KeyInfo;
+use crate::keplr::{Keplr, KeyInfo};
+use crate::{constants::*, error::Error, tokens::ContractInfo};
 use codee::string::JsonSerdeCodec;
 use leptos::prelude::*;
 use send_wrapper::SendWrapper;
@@ -44,7 +39,7 @@ impl TokenMap {
         let token_map: HashMap<String, ContractInfo> =
             serde_json::from_slice(json).expect("Failed to deserialize token_map");
 
-        Self { 0: token_map }
+        Self(token_map)
     }
 }
 

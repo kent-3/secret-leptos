@@ -1762,19 +1762,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "keplr"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "js-sys",
- "keplr-sys",
- "serde",
- "serde-wasm-bindgen 0.6.5",
- "thiserror",
- "web-sys",
-]
-
-[[package]]
 name = "keplr-sys"
 version = "0.1.0"
 dependencies = [
@@ -2868,7 +2855,7 @@ dependencies = [
  "futures",
  "git2",
  "js-sys",
- "keplr",
+ "keplr-sys",
  "leptos",
  "leptos_meta",
  "leptos_router",
@@ -2887,6 +2874,7 @@ dependencies = [
  "tracing-subscriber-wasm",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

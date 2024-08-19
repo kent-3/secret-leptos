@@ -1,14 +1,13 @@
+use crate::keplr::{suggest_chain_types::*, Account, Keplr, KeyInfo};
 use crate::CHAIN_ID;
-use ::keplr::keplr_sys; // normally you wouldn't use keplr_sys directly
-use ::keplr::{suggest_chain_types::*, Account, Keplr, KeyInfo};
+use keplr_sys; // normally you wouldn't use keplr_sys directly
 use leptos::prelude::*;
 use leptos::web_sys::console;
-
 use tracing::{debug, info};
 
-async fn enable_keplr(chain_id: &str) -> bool {
+async fn enable_keplr(chain_id: impl ToString) -> bool {
     debug!("Trying to enable Keplr...");
-    Keplr::enable(chain_id).await.is_ok()
+    Keplr::enable(vec![chain_id.to_string()]).await.is_ok()
 }
 
 // the "keplrOfflineSigner" object is used in the client constructor
@@ -36,7 +35,7 @@ async fn get_key(chain_id: &str) -> KeyInfo {
 }
 
 // internal use only
-fn get_enigma_utils(chain_id: &str) -> () {
+fn get_enigma_utils(chain_id: &str) {
     let js_value = keplr_sys::get_enigma_utils(chain_id);
 
     console::log_1(&js_value);
@@ -52,20 +51,14 @@ async fn get_secret_20_viewing_key(chain_id: &str, contract_address: String) -> 
     key
 }
 
-async fn suggest_token(chain_id: &str, contract_address: &str) {
-    let _ = keplr_sys::suggest_token(chain_id, contract_address).await;
+async fn suggest_token(chain_id: &str, contract_address: &str, viewing_key: Option<&str>) {
+    let _ = Keplr::suggest_token(chain_id, contract_address, viewing_key).await;
 
     // if you want to handle the error case (user closes the pop up):
 
-    // let result = ::keplr::suggest_token(chain_id, contract_address)
+    // let result = Keplr::suggest_token(chain_id, contract_address, viewing_key)
     //     .await
-    //     .map_err(|js_value| {
-    //         let error = Error::from(js_value)
-    //             .message()
-    //             .as_string()
-    //             .unwrap_or("unknown error".to_string());
-    //         error
-    //     });
+    //     .map_err(Into::into);
     //
     // match result {
     //     Ok(_) => log!("token added?"),
@@ -93,13 +86,18 @@ pub fn KeplrTests() -> impl IntoView {
             get_secret_20_viewing_key(CHAIN_ID, token_address)
         });
     let suggest_token_action: Action<(), (), SyncStorage> = Action::new_unsync(move |_: &()| {
-        suggest_token(CHAIN_ID, "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852")
+        suggest_token(
+            CHAIN_ID,
+            "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852",
+            Some("hola"),
+        )
     });
 
     let suggest_chain_action: Action<(), (), SyncStorage> =
         Action::new_unsync(move |_: &()| suggest());
 
-    // Event Handlers
+    // on:click Handlers
+
     let enable_keplr = move |_| _ = enable_keplr_action.dispatch(());
     let get_account = move |_| _ = get_account_action.dispatch(());
     let get_key = move |_| _ = get_key_action.dispatch(());
@@ -112,11 +110,13 @@ pub fn KeplrTests() -> impl IntoView {
     let suggest_chain = move |_| _ = suggest_chain_action.dispatch_local(());
 
     // Action Value Signals
+
     let account = get_account_action.value();
     let key = get_key_action.value();
     let viewing_key = get_viewing_key_action.value();
 
     // Non-Actions
+
     let get_enigma_utils = move |_| get_enigma_utils(CHAIN_ID);
     let disable_keplr = move |_| {
         keplr_sys::disable(CHAIN_ID);

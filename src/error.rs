@@ -1,13 +1,15 @@
+// The Serialize and Deserialize traits are derived to ensure that Errors can be
+// transmitted to or from a server, which is necessary for them to function as Resources.
 #[derive(thiserror::Error, serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub enum Error {
     #[error("An error occurred: {0}")]
-    GenericError(String),
+    Generic(String),
 
-    #[error("A Secret error occurred: {0}")]
-    SecretError(String),
+    #[error("An error related to Secret occurred: {0}")]
+    Secret(String),
 
-    #[error(transparent)]
-    KeplrError(#[from] ::keplr::Error),
+    #[error("An error related to Keplr occurred: {0}")]
+    Keplr(#[from] crate::keplr::Error),
 
     #[error("Keplr is not enabled!")]
     KeplrDisabled,
@@ -15,13 +17,13 @@ pub enum Error {
 
 impl From<rsecret::Error> for Error {
     fn from(error: rsecret::Error) -> Self {
-        Error::SecretError(error.to_string())
+        Error::Secret(error.to_string())
     }
 }
 
 impl Error {
     pub fn generic(message: impl ToString) -> Self {
         let message = message.to_string();
-        Error::GenericError(message)
+        Error::Generic(message)
     }
 }

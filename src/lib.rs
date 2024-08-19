@@ -3,7 +3,7 @@
 // use codee::string::FromToStringCodec;
 // use leptos_use::storage::use_local_storage;
 
-use ::keplr::{keplr_sys, Keplr, KeyInfo};
+use keplr::{keplr_sys, Keplr, KeyInfo};
 use leptos::{
     ev::MouseEvent,
     html::{Dialog, Input},
@@ -28,8 +28,10 @@ mod components;
 mod constants;
 mod error;
 mod keplr;
+mod prelude;
 mod state;
 mod tokens;
+mod utils;
 
 use components::Spinner2;
 use constants::{CHAIN_ID, GRPC_URL};
@@ -92,6 +94,13 @@ pub enum QueryAnswer {
 pub fn App() -> impl IntoView {
     info!("rendering <App/>");
 
+    spawn_local(async {
+        match Keplr::ping().await {
+            Ok(_) => debug!("Keplr is available!"),
+            Err(_) => debug!("Keplr is not available!"),
+        }
+    });
+
     // Global Context
 
     let keplr = KeplrSignals::new();
@@ -123,17 +132,15 @@ pub fn App() -> impl IntoView {
 
     let enable_keplr_action: Action<(), bool, SyncStorage> =
         Action::new_unsync_with_value(Some(false), move |_: &()| async move {
-            let keplr_extension = js_sys::Reflect::get(&window(), &JsValue::from_str("keplr"))
-                .expect("unable to check for `keplr` property");
-
-            if keplr_extension.is_undefined() || keplr_extension.is_null() {
+            if Keplr::ping().await.is_err() {
                 window()
                     .alert_with_message("keplr not found")
                     .expect("alert failed");
+                keplr.enabled.set(false);
                 false
             } else {
                 debug!("Trying to enable Keplr...");
-                match Keplr::enable(CHAIN_ID).await {
+                match Keplr::enable(vec![CHAIN_ID.to_string()]).await {
                     Ok(_) => {
                         keplr.enabled.set(true);
                         debug!("Keplr is enabled");
@@ -184,14 +191,6 @@ pub fn App() -> impl IntoView {
 
     // HTML Elements
 
-    let connect_button = move || {
-        view! {
-            <button on:click=enable_keplr disabled=enable_keplr_action.pending()>
-                Connect Wallet
-            </button>
-        }
-    };
-
     let toggle_options_menu = move |_| match options_dialog_ref.get() {
         Some(dialog) => match dialog.open() {
             false => {
@@ -202,10 +201,6 @@ pub fn App() -> impl IntoView {
         None => {
             let _ = window().alert_with_message("Something is wrong!");
         }
-    };
-
-    let options_button = move || {
-        view! { <button on:click=toggle_options_menu>"Options"</button> }
     };
 
     let key_name = move || {
@@ -223,14 +218,26 @@ pub fn App() -> impl IntoView {
                     <h1>"Secret Leptos"</h1>
                     // terrible, but it works...
                     <Show when=move || {
-                        keplr.key_info.get().and_then(|foo| Some(foo.is_ok())).unwrap_or_default()
+                        keplr.key_info.get().map(|foo| foo.is_ok()).unwrap_or_default()
                     }>
-                        <p class="outline outline-2 outline-offset-8 outline-neutral-500">
-                            Connected as <strong>{key_name}</strong>
+                        <p class="text-sm outline outline-2 outline-offset-8 outline-neutral-500">
+                            "Connected as "<strong>{key_name}</strong>
                         </p>
                     </Show>
-                    <Show when=move || keplr.enabled.get() fallback=connect_button>
-                        {options_button}
+                    <Show
+                        when=move || keplr.enabled.get()
+                        fallback=move || {
+                            view! {
+                                <button
+                                    on:click=enable_keplr
+                                    disabled=enable_keplr_action.pending()
+                                >
+                                    Connect Wallet
+                                </button>
+                            }
+                        }
+                    >
+                        <button on:click=toggle_options_menu>"Options"</button>
                     </Show>
                 </div>
                 <hr />
@@ -457,7 +464,7 @@ fn Home() -> impl IntoView {
             compute
                 .query_secret_contract(contract_address, code_hash, query)
                 .await
-                .map_err(|error| Error::generic(error))
+                .map_err(Error::generic)
         })
     });
 
