@@ -13,7 +13,7 @@ async fn enable_keplr(chain_id: impl ToString) -> bool {
 // the "keplrOfflineSigner" object is used in the client constructor
 async fn get_account(chain_id: &str) -> Account {
     let signer = keplr_sys::get_offline_signer_only_amino(chain_id);
-    let accounts = signer.get_accounts().await;
+    let accounts = signer.get_accounts().await.unwrap();
     let accounts = js_sys::Array::from(&accounts);
     let account = accounts.get(0);
 

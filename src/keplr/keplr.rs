@@ -2,8 +2,11 @@ use crate::keplr::Error;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures::TryFutureExt;
 use js_sys::JsString;
+use keplr_sys::KeplrOfflineSigner as RawKeplrOfflineSigner;
 use keplr_sys::*;
 use serde::{Deserialize, Serialize};
+use std::{rc::Rc, sync::Arc};
+use tracing::debug;
 use web_sys::console;
 
 /// An Amino encoded message.
@@ -102,6 +105,14 @@ impl Keplr {
         KEPLR.with(console::log_1)
     }
 
+    pub fn is_available() -> bool {
+        web_sys::window()
+            .and_then(|window| {
+                js_sys::Reflect::get(&window, &wasm_bindgen::JsValue::from_str("keplr")).ok()
+            })
+            .map_or(false, |keplr| !keplr.is_undefined() && !keplr.is_null())
+    }
+
     pub async fn ping() -> Result<(), Error> {
         ping().await.map_err(Into::into)
     }
@@ -117,29 +128,31 @@ impl Keplr {
             .map_err(Into::into)
     }
 
-    pub async fn get_account(chain_id: &str) -> Account {
+    pub async fn get_account(chain_id: &str) -> Result<Account, Error> {
         let signer = get_offline_signer_only_amino(chain_id);
-        let accounts = signer.get_accounts().await;
+        let accounts = signer
+            .get_accounts()
+            .await
+            .map_err(|_| Error::KeplrUnavailable)?;
         let accounts = js_sys::Array::from(&accounts);
         let account = accounts.get(0);
 
-        let account: Account = serde_wasm_bindgen::from_value(account)
-            .expect("There was a problem with deserializing the 'Account'");
+        let account: Account = serde_wasm_bindgen::from_value(account)?;
 
-        account
+        Ok(account)
     }
 
-    // pub fn get_offline_signer(chain_id: &str) -> KeplrOfflineSigner {
-    //     get_offline_signer(chain_id)
-    // }
-    //
-    // pub fn get_offline_signer_only_amino(chain_id: &str) -> KeplrOfflineSigner {
-    //     get_offline_signer_only_amino(chain_id)
-    // }
-    //
-    // pub fn get_enigma_utils(chain_id: &str) -> EnigmaUtils {
-    //     EnigmaUtils::new(get_enigma_utils(chain_id))
-    // }
+    pub fn get_offline_signer(chain_id: &str) -> KeplrOfflineSigner {
+        get_offline_signer(chain_id).into()
+    }
+
+    pub fn get_offline_signer_only_amino(chain_id: &str) -> KeplrOfflineSignerOnlyAmino {
+        get_offline_signer_only_amino(chain_id).into()
+    }
+
+    pub fn get_enigma_utils(chain_id: &str) -> EnigmaUtils {
+        get_enigma_utils(chain_id)
+    }
 
     pub async fn suggest_token(
         chain_id: &str,
@@ -170,6 +183,101 @@ impl Keplr {
     }
 }
 
+#[derive(Clone)]
+pub struct KeplrOfflineSigner {
+    inner: Rc<keplr_sys::KeplrOfflineSigner>,
+}
+
+impl From<keplr_sys::KeplrOfflineSigner> for KeplrOfflineSigner {
+    fn from(value: keplr_sys::KeplrOfflineSigner) -> Self {
+        Self {
+            inner: Rc::new(value),
+        }
+    }
+}
+
+impl KeplrOfflineSigner {
+    pub fn chain_id(&self) -> String {
+        self.inner
+            .chain_id()
+            .as_string()
+            .expect("chain_id field is missing!")
+    }
+
+    pub async fn get_accounts(&self) -> Result<Account, Error> {
+        self.inner
+            .get_accounts()
+            .await
+            .map_err(|_| Error::KeplrUnavailable)
+            .map(|val| js_sys::Array::from(&val))
+            .map(|accounts| accounts.get(0))
+            .and_then(|account| serde_wasm_bindgen::from_value(account).map_err(Into::into))
+    }
+
+    pub async fn sign_amino(
+        &self,
+        signer_address: impl ToString,
+        sign_doc: StdSignDoc,
+    ) -> Result<AminoSignResponse, Error> {
+        todo!()
+    }
+
+    // pub async fn sign_direct(
+    //     &self,
+    //     signer_address: impl ToString,
+    //     sign_doc: SignDoc,
+    // ) -> Result<DirectSignResponse, Error> {
+    //     todo!()
+    // }
+}
+
+#[derive(Clone)]
+pub struct KeplrOfflineSignerOnlyAmino {
+    inner: Rc<keplr_sys::KeplrOfflineSignerOnlyAmino>,
+}
+
+impl From<keplr_sys::KeplrOfflineSignerOnlyAmino> for KeplrOfflineSignerOnlyAmino {
+    fn from(value: keplr_sys::KeplrOfflineSignerOnlyAmino) -> Self {
+        Self {
+            inner: Rc::new(value),
+        }
+    }
+}
+
+impl KeplrOfflineSignerOnlyAmino {
+    pub fn chain_id(&self) -> String {
+        self.inner
+            .chain_id()
+            .as_string()
+            .expect("chain_id field is missing!")
+    }
+
+    pub async fn get_accounts(&self) -> Result<Account, Error> {
+        self.inner
+            .get_accounts()
+            .await
+            .map_err(|_| Error::KeplrUnavailable)
+            .map(|val| js_sys::Array::from(&val))
+            .map(|accounts| accounts.get(0))
+            .and_then(|account| serde_wasm_bindgen::from_value(account).map_err(Into::into))
+    }
+
+    pub async fn sign_amino(
+        &self,
+        signer_address: impl ToString,
+        sign_doc: StdSignDoc,
+    ) -> Result<AminoSignResponse, Error> {
+        todo!()
+    }
+
+    // pub async fn sign_direct(
+    //     &self,
+    //     signer_address: impl ToString,
+    //     sign_doc: SignDoc,
+    // ) -> Result<DirectSignResponse, Error> {
+    //     todo!()
+    // }
+}
 #[derive(Deserialize, Clone)]
 pub struct Account {
     pub address: String,

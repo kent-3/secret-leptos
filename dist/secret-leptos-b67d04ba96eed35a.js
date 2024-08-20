@@ -894,10 +894,10 @@ function __wbg_get_imports() {
         const ret = window.keplr.getOfflineSignerOnlyAmino(getStringFromWasm0(arg0, arg1));
         return addHeapObject(ret);
     };
-    imports.wbg.__wbg_getAccounts_57cf651fde266c12 = function(arg0) {
+    imports.wbg.__wbg_getAccounts_871f2df1ff0e236a = function() { return handleError(function (arg0) {
         const ret = getObject(arg0).getAccounts();
         return addHeapObject(ret);
-    };
+    }, arguments) };
     imports.wbg.__wbg_from_0791d740a9d37830 = function(arg0) {
         const ret = Array.from(getObject(arg0));
         return addHeapObject(ret);
@@ -1267,7 +1267,7 @@ function __wbg_get_imports() {
         const ret = makeMutClosure(arg0, arg1, 387, __wbg_adapter_49);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper4257 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper4258 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 416, __wbg_adapter_49);
         return addHeapObject(ret);
     };
