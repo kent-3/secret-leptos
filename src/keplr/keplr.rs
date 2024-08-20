@@ -1,70 +1,22 @@
 use crate::keplr::Error;
+use async_trait::async_trait;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures::TryFutureExt;
 use js_sys::JsString;
 use keplr_sys::KeplrOfflineSigner as RawKeplrOfflineSigner;
 use keplr_sys::*;
+use send_wrapper::SendWrapper;
 use serde::{Deserialize, Serialize};
 use std::{rc::Rc, sync::Arc};
 use tracing::debug;
+use wasm_bindgen_futures::spawn_local;
 use web_sys::console;
 
-/// An Amino encoded message.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AminoMsg {
-    pub r#type: String,
-    pub value: Vec<u8>,
-}
+use rsecret::wallet::wallet_amino::*;
+use rsecret::wallet::wallet_proto::*;
+use secretrs::tx::SignDoc;
 
-/// Response after signing with Amino.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AminoSignResponse {
-    /// The sign_doc that was signed.
-    ///
-    /// This may be different from the input sign_doc when the signer modifies it as part of the signing process.
-    pub signed: StdSignDoc,
-    pub signature: StdSignature,
-}
-
-/// Standard signature.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StdSignature {
-    #[serde(alias = "pubKey")]
-    pub pub_key: Pubkey,
-    pub signature: String,
-}
-
-/// Public key.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Pubkey {
-    /// Possible types include:
-    /// - "tendermint/PubKeySecp256k1"
-    /// - "tendermint/PubKeyEd25519"
-    /// - "tendermint/PubKeySr25519
-    pub r#type: String,
-    /// Base64 encoded String
-    pub value: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StdSignDoc {
-    pub chain_id: String,
-    pub account_number: String,
-    pub sequence: String,
-    pub fee: StdFee,
-    pub msgs: Vec<AminoMsg>,
-    pub memo: String,
-}
-
-/// Standard fee.
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct StdFee {
-    pub amount: Vec<Coin>,
-    pub gas: String,
-    pub granter: Option<String>,
-}
-
-pub type Coin = String;
+pub use rsecret::wallet::wallet_amino::AccountData;
 
 #[derive(Serialize, Deserialize, Clone, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -128,7 +80,7 @@ impl Keplr {
             .map_err(Into::into)
     }
 
-    pub async fn get_account(chain_id: &str) -> Result<Account, Error> {
+    pub async fn get_account(chain_id: &str) -> Result<AccountData, Error> {
         let signer = get_offline_signer_only_amino(chain_id);
         let accounts = signer
             .get_accounts()
@@ -137,7 +89,7 @@ impl Keplr {
         let accounts = js_sys::Array::from(&accounts);
         let account = accounts.get(0);
 
-        let account: Account = serde_wasm_bindgen::from_value(account)?;
+        let account: AccountData = serde_wasm_bindgen::from_value(account)?;
 
         Ok(account)
     }
@@ -185,113 +137,125 @@ impl Keplr {
 
 #[derive(Clone)]
 pub struct KeplrOfflineSigner {
-    inner: Rc<keplr_sys::KeplrOfflineSigner>,
+    inner: SendWrapper<Rc<keplr_sys::KeplrOfflineSigner>>,
 }
 
 impl From<keplr_sys::KeplrOfflineSigner> for KeplrOfflineSigner {
     fn from(value: keplr_sys::KeplrOfflineSigner) -> Self {
         Self {
-            inner: Rc::new(value),
+            inner: SendWrapper::new(Rc::new(value)),
         }
     }
 }
 
-impl KeplrOfflineSigner {
-    pub fn chain_id(&self) -> String {
-        self.inner
-            .chain_id()
-            .as_string()
-            .expect("chain_id field is missing!")
+#[async_trait]
+impl DirectSigner for KeplrOfflineSigner {
+    type Error = super::Error;
+
+    // pub fn chain_id(&self) -> String {
+    //     self.inner
+    //         .chain_id()
+    //         .as_string()
+    //         .expect("chain_id field is missing!")
+    // }
+
+    async fn get_accounts(&self) -> Result<Vec<AccountData>, Self::Error> {
+        SendWrapper::new(async move {
+            self.inner
+                .get_accounts()
+                .await
+                .map_err(|_| Error::KeplrUnavailable)
+                .map(|val| js_sys::Array::from(&val))
+                .and_then(|accounts| {
+                    accounts
+                        .iter()
+                        .map(|account| serde_wasm_bindgen::from_value(account).map_err(Into::into))
+                        .collect::<Result<Vec<AccountData>, Error>>()
+                })
+        })
+        .await
     }
 
-    pub async fn get_accounts(&self) -> Result<Account, Error> {
-        self.inner
-            .get_accounts()
-            .await
-            .map_err(|_| Error::KeplrUnavailable)
-            .map(|val| js_sys::Array::from(&val))
-            .map(|accounts| accounts.get(0))
-            .and_then(|account| serde_wasm_bindgen::from_value(account).map_err(Into::into))
-    }
-
-    pub async fn sign_amino(
+    async fn sign_amino(
         &self,
-        signer_address: impl ToString,
+        signer_address: &str,
         sign_doc: StdSignDoc,
-    ) -> Result<AminoSignResponse, Error> {
+    ) -> Result<AminoSignResponse, Self::Error> {
         todo!()
     }
 
-    // pub async fn sign_direct(
-    //     &self,
-    //     signer_address: impl ToString,
-    //     sign_doc: SignDoc,
-    // ) -> Result<DirectSignResponse, Error> {
-    //     todo!()
-    // }
+    async fn sign_permit(
+        &self,
+        signer_address: &str,
+        sign_doc: StdSignDoc,
+    ) -> Result<AminoSignResponse, Self::Error> {
+        todo!()
+    }
+
+    async fn sign_direct(
+        &self,
+        signer_address: &str,
+        sign_doc: SignDocVariant,
+    ) -> Result<DirectSignResponse, Self::Error> {
+        todo!()
+    }
 }
 
 #[derive(Clone)]
 pub struct KeplrOfflineSignerOnlyAmino {
-    inner: Rc<keplr_sys::KeplrOfflineSignerOnlyAmino>,
+    inner: SendWrapper<Rc<keplr_sys::KeplrOfflineSignerOnlyAmino>>,
 }
 
 impl From<keplr_sys::KeplrOfflineSignerOnlyAmino> for KeplrOfflineSignerOnlyAmino {
     fn from(value: keplr_sys::KeplrOfflineSignerOnlyAmino) -> Self {
         Self {
-            inner: Rc::new(value),
+            inner: SendWrapper::new(Rc::new(value)),
         }
     }
 }
 
-impl KeplrOfflineSignerOnlyAmino {
-    pub fn chain_id(&self) -> String {
-        self.inner
-            .chain_id()
-            .as_string()
-            .expect("chain_id field is missing!")
+#[async_trait]
+impl AminoSigner for KeplrOfflineSignerOnlyAmino {
+    type Error = super::Error;
+
+    // pub fn chain_id(&self) -> String {
+    //     self.inner
+    //         .chain_id()
+    //         .as_string()
+    //         .expect("chain_id field is missing!")
+    // }
+
+    async fn get_accounts(&self) -> Result<Vec<AccountData>, Self::Error> {
+        SendWrapper::new(async move {
+            self.inner
+                .get_accounts()
+                .await
+                .map_err(|_| Error::KeplrUnavailable)
+                .map(|val| js_sys::Array::from(&val))
+                .and_then(|accounts| {
+                    accounts
+                        .iter()
+                        .map(|account| serde_wasm_bindgen::from_value(account).map_err(Into::into))
+                        .collect::<Result<Vec<AccountData>, Error>>()
+                })
+        })
+        .await
     }
 
-    pub async fn get_accounts(&self) -> Result<Account, Error> {
-        self.inner
-            .get_accounts()
-            .await
-            .map_err(|_| Error::KeplrUnavailable)
-            .map(|val| js_sys::Array::from(&val))
-            .map(|accounts| accounts.get(0))
-            .and_then(|account| serde_wasm_bindgen::from_value(account).map_err(Into::into))
-    }
-
-    pub async fn sign_amino(
+    async fn sign_amino(
         &self,
-        signer_address: impl ToString,
+        signer_address: &str,
         sign_doc: StdSignDoc,
-    ) -> Result<AminoSignResponse, Error> {
+    ) -> Result<AminoSignResponse, Self::Error> {
         todo!()
     }
 
-    // pub async fn sign_direct(
-    //     &self,
-    //     signer_address: impl ToString,
-    //     sign_doc: SignDoc,
-    // ) -> Result<DirectSignResponse, Error> {
-    //     todo!()
-    // }
-}
-#[derive(Deserialize, Clone)]
-pub struct Account {
-    pub address: String,
-    pub algo: String,
-    pub pubkey: Vec<u8>,
-}
-
-impl std::fmt::Debug for Account {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Account")
-            .field("address", &self.address)
-            .field("algo", &self.algo)
-            .field("pubkey", &BASE64_STANDARD.encode(&self.pubkey)) // Convert pubkey to base64
-            .finish()
+    async fn sign_permit(
+        &self,
+        signer_address: &str,
+        sign_doc: StdSignDoc,
+    ) -> Result<AminoSignResponse, Self::Error> {
+        todo!()
     }
 }
 

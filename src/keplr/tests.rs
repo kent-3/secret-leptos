@@ -1,4 +1,4 @@
-use crate::keplr::{suggest_chain_types::*, Account, Keplr, Key};
+use crate::keplr::{suggest_chain_types::*, AccountData, Keplr, Key};
 use crate::CHAIN_ID;
 use keplr_sys; // normally you wouldn't use keplr_sys directly
 use leptos::prelude::*;
@@ -11,13 +11,13 @@ async fn enable_keplr(chain_id: impl ToString) -> bool {
 }
 
 // the "keplrOfflineSigner" object is used in the client constructor
-async fn get_account(chain_id: &str) -> Account {
+async fn get_account(chain_id: &str) -> AccountData {
     let signer = keplr_sys::get_offline_signer_only_amino(chain_id);
     let accounts = signer.get_accounts().await.unwrap();
     let accounts = js_sys::Array::from(&accounts);
     let account = accounts.get(0);
 
-    let account: Account = serde_wasm_bindgen::from_value(account).unwrap();
+    let account: AccountData = serde_wasm_bindgen::from_value(account).unwrap();
     log!("{account:#?}");
 
     account
@@ -76,7 +76,7 @@ pub fn KeplrTests() -> impl IntoView {
 
     let enable_keplr_action: Action<(), bool, SyncStorage> =
         Action::new_unsync_with_value(Some(false), |_: &()| enable_keplr(CHAIN_ID));
-    let get_account_action: Action<(), Account, SyncStorage> =
+    let get_account_action: Action<(), AccountData, SyncStorage> =
         Action::new_unsync(|_: &()| get_account(CHAIN_ID));
     let get_key_action: Action<(), Key, SyncStorage> =
         Action::new_unsync(|_: &()| get_key(CHAIN_ID));

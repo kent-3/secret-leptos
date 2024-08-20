@@ -2859,6 +2859,7 @@ dependencies = [
 name = "secret-leptos"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "base64 0.22.1",
  "codee",
  "console_error_panic_hook",
