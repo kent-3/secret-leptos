@@ -111,26 +111,15 @@ pub fn SecretJsTests() -> impl IntoView {
     view! {
         <h2>"SecretJS Tests"</h2>
 
-        <button on:click=create_random_wallet >
-        "create_random_wallet"
-        </button>
-        <br/>
-        <button on:click=create_readonly_client >
-        "create_readonly_client"
-        </button>
-        <br/>
-        <button on:click=create_signing_client >
-        "create_signing_client"
-        </button>
-        <br/>
-        <button on:click=dispatch_query_action >
-        "dispatch_query_action"
-        </button>
-        <br/>
-        <Show
-            when=move || query_response().is_some()
-            fallback=|| ()
-        >
+        <button on:click=create_random_wallet>"create_random_wallet"</button>
+        <br />
+        <button on:click=create_readonly_client>"create_readonly_client"</button>
+        <br />
+        <button on:click=create_signing_client>"create_signing_client"</button>
+        <br />
+        <button on:click=dispatch_query_action>"dispatch_query_action"</button>
+        <br />
+        <Show when=move || query_response().is_some() fallback=|| ()>
             <p>
                 "Response: "
                 <code>
@@ -139,7 +128,7 @@ pub fn SecretJsTests() -> impl IntoView {
                             Some(resp) => resp.unwrap(),
                             None => "".to_string(),
                         }
-                    } }
+                    }}
                 </code>
             </p>
         </Show>

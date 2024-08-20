@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use leptos_tutorial::*;
+use secret_leptos::App;
 use tracing_subscriber::fmt;
 use tracing_subscriber_wasm::MakeConsoleWriter;
 use wasm_bindgen::JsValue;
@@ -7,6 +7,7 @@ use wasm_bindgen::JsValue;
 fn main() {
     fmt()
         .with_writer(MakeConsoleWriter::default().map_trace_level_to(tracing::Level::DEBUG))
+        .with_max_level(tracing::Level::DEBUG)
         .without_time()
         .init();
     console_error_panic_hook::set_once();
@@ -19,6 +20,5 @@ fn main() {
         &JsValue::from_bool(true),
     );
 
-    // TODO - figure out how to set 'demo' as env var
-    mount_to_body(|| view! { <App demo=true / > });
+    mount_to_body(|| view! { <App /> });
 }

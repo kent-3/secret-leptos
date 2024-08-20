@@ -5,9 +5,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link data-trunk rel="rust" data-wasm-opt="z" />
-  <link data-trunk rel="icon" type="image/ico" href="public/favicon.ico" />
-  <link data-trunk rel="tailwind-css" href="input.css" />
+  
+<script type="module" nonce="wqUNuuG7dQnIzB46WPcqvA==">
+import init, * as bindings from 'https://kent-3.github.io/secret-leptos/secret-leptos-b67d04ba96eed35a.js';
+const wasm = await init('https://kent-3.github.io/secret-leptos/secret-leptos-b67d04ba96eed35a_bg.wasm');
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+  <link rel="icon" href="https://kent-3.github.io/secret-leptos/favicon-e9cbd8f50cc65bf2.ico" integrity="sha384&#x2D;YobgLXwtz0GhXVUTHml49p32guapVFlEG8UpQdDVN3kekOqkQi&#x2B;qSXEpwp&#x2B;yM4BW"/>
+  <link rel="stylesheet" href="https://kent-3.github.io/secret-leptos/input-19d3d6031e6224f1.css" integrity="sha384&#x2D;Llf&#x2F;1z3pS30ykImra&#x2F;t6OnhoWltBvHrJog4vWANEoBZhLszMWX24fL&#x2B;f9mlg3zE3"/>
 
   <script>
     function checkResourcesLoaded() {
@@ -27,7 +38,9 @@
       checkResourcesLoaded();
     });
   </script>
-</head>
+
+<link rel="modulepreload" href="https://kent-3.github.io/secret-leptos/secret-leptos-b67d04ba96eed35a.js" crossorigin=anonymous integrity="sha384-65Nv+GmXllwlTYiUtevqIUxk+ChiYpJNCL36g+394KBFQoX1pwzHhdRcbex7GJIy">
+<link rel="preload" href="https://kent-3.github.io/secret-leptos/secret-leptos-b67d04ba96eed35a_bg.wasm" crossorigin=anonymous integrity="sha384-CRTsd5Rln6mwJu3Fg0PKYsLB1PbwI5y1NJ6Ph/7VKD2dnOxY64Dw/z3NVL0Aixx7" as="fetch" type="application/wasm"></head>
 
 <style>
   .spinner {

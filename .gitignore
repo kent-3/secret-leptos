@@ -1,5 +1,2 @@
 /target
-/dist
-/style
-
-Cargo.lock
+# /dist

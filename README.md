@@ -1,8 +1,7 @@
 # secret-leptos
 
 This is a Client-Side-Rendered App showing how it's possible to interact with
-[Keplr](https://github.com/chainapsis/keplr-wallet) and
-[secretjs](https://github.com/scrtlabs/secret.js) from WebAssembly,
+[Keplr](https://github.com/chainapsis/keplr-wallet) and Secret from WebAssembly,
 using the [Leptos](https://leptos.dev/) framework.
 
 ## Getting Started
@@ -12,9 +11,6 @@ If you don’t already have it installed, you can install Trunk by running
 ```bash
 cargo install trunk
 ```
-
-Using nightly Rust and the nightly feature in Leptos enables the function-call
-syntax for signal getters and setters used in this example.
 
 To use nightly Rust, you can run
 
@@ -32,16 +28,11 @@ rustup target add wasm32-unknown-unknown
 
 ## Tailwind
 
-`trunk.toml` is configured to build the CSS automatically.
+Trunk handles the Tailwind build step. Include a line like this in your `index.html` head:
 
-You can install Tailwind using `npm`:
-
-```bash
-npm install -D tailwindcss
+```html
+<link data-trunk rel="tailwind-css" href="input.css" />
 ```
-
-If you'd rather not use npm, you can install the Tailwind binary
-[here](https://github.com/tailwindlabs/tailwindcss/releases).
 
 ## Developing
 
@@ -59,7 +50,7 @@ trunk serve --open
 To create a production version of your app:
 
 ```bash
-trunk build --release
+trunk build --release --public-url "https://kent-3.github.io/secret-leptos/"
 ```
 
 `trunk build` will create a number of build artifacts in a `dist/` directory.

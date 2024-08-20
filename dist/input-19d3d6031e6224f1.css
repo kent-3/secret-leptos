@@ -1,10 +1,260 @@
 /* @import "style/leptonic/leptonic-themes"; */
 
 /* @tailwind base; */
-@tailwind components;
-@tailwind utilities;
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.static {
+  position: static;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.inset-0 {
+  inset: 0px;
+}
+
+.z-\[50\] {
+  z-index: 50;
+}
+
+.mr-3 {
+  margin-right: 0.75rem;
+}
+
+.mt-12 {
+  margin-top: 3rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.inline-flex {
+  display: inline-flex;
+}
+
+.grid {
+  display: grid;
+}
+
+.h-8 {
+  height: 2rem;
+}
+
+.max-h-\[50vh\] {
+  max-height: 50vh;
+}
+
+.w-8 {
+  width: 2rem;
+}
+
+.min-w-fit {
+  min-width: -moz-fit-content;
+  min-width: fit-content;
+}
+
+.max-w-\[320px\] {
+  max-width: 320px;
+}
+
+.max-w-max {
+  max-width: -moz-max-content;
+  max-width: max-content;
+}
+
+.transform {
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.grid-cols-\[auto\2c 1fr\] {
+  grid-template-columns: auto 1fr;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.gap-x-4 {
+  -moz-column-gap: 1rem;
+       column-gap: 1rem;
+}
+
+.gap-y-2 {
+  row-gap: 0.5rem;
+}
+
+.self-stretch {
+  align-self: stretch;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-clip {
+  overflow: clip;
+}
+
+.overflow-x-auto {
+  overflow-x: auto;
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+
+.rounded {
+  border-radius: 0.25rem;
+}
+
+.rounded-sm {
+  border-radius: 0.125rem;
+}
+
+.border-solid {
+  border-style: solid;
+}
+
+.border-blue-500 {
+  --tw-border-opacity: 1;
+  border-color: rgb(59 130 246 / var(--tw-border-opacity));
+}
+
+.bg-\[initial\] {
+  background-color: initial;
+}
+
+.bg-neutral-400 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(163 163 163 / var(--tw-bg-opacity));
+}
+
+.bg-opacity-50 {
+  --tw-bg-opacity: 0.5;
+}
+
+.stroke-\[\#75b6e7\] {
+  stroke: #75b6e7;
+}
+
+.stroke-neutral-900 {
+  stroke: #171717;
+}
+
+.px-2 {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.py-0 {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.py-0\.5 {
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.text-blue-500 {
+  --tw-text-opacity: 1;
+  color: rgb(59 130 246 / var(--tw-text-opacity));
+}
+
+.opacity-80 {
+  opacity: 0.8;
+}
+
+.outline {
+  outline-style: solid;
+}
+
+.outline-1 {
+  outline-width: 1px;
+}
+
+.outline-2 {
+  outline-width: 2px;
+}
+
+.outline-offset-8 {
+  outline-offset: 8px;
+}
+
+.outline-neutral-500 {
+  outline-color: #737373;
+}
+
+.blur {
+  --tw-blur: blur(8px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+
+.backdrop-filter {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
+          backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
+}
 
 /* Base styles */
+
 html {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizelegibility;
@@ -15,12 +265,25 @@ html {
     Helvetica,
     Arial,
     sans-serif;
-  @apply max-w-5xl mx-auto sm:px-4;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 64rem;
+}
+
+@media (min-width: 640px) {
+  html {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 /* Light mode default */
+
 body {
-  @apply bg-white text-neutral-900;
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 255 255 / var(--tw-bg-opacity));
+  --tw-text-opacity: 1;
+  color: rgb(23 23 23 / var(--tw-text-opacity));
 }
 
 a[aria-current] {
@@ -42,13 +305,17 @@ nav a:hover {
 }
 
 /* Dark mode styles */
+
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;
   }
 
   body {
-    @apply bg-neutral-900 text-neutral-200;
+    --tw-bg-opacity: 1;
+    background-color: rgb(23 23 23 / var(--tw-bg-opacity));
+    --tw-text-opacity: 1;
+    color: rgb(229 229 229 / var(--tw-text-opacity));
   }
 
   nav a {
@@ -64,17 +331,29 @@ nav a:hover {
 }
 
 /* code { */
+
 /*   font-family: */
+
 /*     JetBrains Mono, */
+
 /*     monospace; */
+
 /*   font-size: 1rem; */
+
 /*   color: #75b6e7; */
+
 /*   background-color: rgb(117 182 231 / 0.3); */
+
 /*   padding-top: 0.125rem; */
+
 /*   padding-bottom: 0.125rem; */
+
 /*   padding-left: 0.25rem; */
+
 /*   padding-right: 0.25rem; */
+
 /*   border-radius: 0.25rem; */
+
 /* } */
 
 ::backdrop {
@@ -132,12 +411,14 @@ nav a:hover {
 }
 
 /* Open state of the dialog */
+
 dialog[open] {
   opacity: 1;
   transform: scale(1);
 }
 
 /* Closed state of the dialog */
+
 dialog {
   opacity: 0;
   transform: scale(0.5);
@@ -145,8 +426,11 @@ dialog {
 }
 
 /* Before-open state */
+
 /* Needs to be after the previous dialog[open] rule to take effect, */
+
 /* as the specificity is the same */
+
 @starting-style {
   dialog[open] {
     opacity: 0;
@@ -155,8 +439,10 @@ dialog {
 }
 
 /* Transition the :backdrop when the dialog modal is promoted to the top layer */
+
 dialog[open]::backdrop {
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
   background-color: rgb(0 0 0 / 25%);
   /* background-image: linear-gradient(to top right, */
   /*     rgb(245 158 11 / 0.3), */
@@ -164,16 +450,20 @@ dialog[open]::backdrop {
 }
 
 dialog::backdrop {
-  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+          backdrop-filter: blur(0px);
   background-color: rgb(0 0 0 / 0%);
   transition: all 150ms cubic-bezier(0, 0, 0, 1) allow-discrete;
 }
 
 /* This starting-style rule cannot be nested inside the above selector */
+
 /* because the nesting selector cannot represent pseudo-elements. */
+
 @starting-style {
   dialog[open]::backdrop {
-    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+            backdrop-filter: blur(0px);
     background-color: rgb(0 0 0 / 0%);
   }
 }
@@ -183,7 +473,11 @@ input {
 }
 
 .btn {
-  @apply font-bold py-2 px-4;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-weight: 700;
 }
 
 .success {
@@ -231,11 +525,17 @@ ul {
 }
 
 /* transitionTimingFunction: { */
+
 /* 	'standard': 'cubic-bezier(0.2, 0, 0, 1)', */
+
 /* 	'standard-decelerate': 'cubic-bezier(0, 0, 0, 1)', */
+
 /* 	'standard-accelerate': 'cubic-bezier(0.3, 0.1, 1, 1)', */
+
 /* 	'emphasized-decelerate': 'cubic-bezier(0.05, 0.7, 0.1, 1.0)', */
+
 /* 	'emphasized-accelerate': 'cubic-bezier(0.3, 0.0, 0.8, 0.15)' */
+
 /* } */
 
 .slideIn {
@@ -299,5 +599,39 @@ ul {
   to {
     opacity: 0;
     transform: translate(25vw, 0);
+  }
+}
+
+.hover\:bg-neutral-800:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(38 38 38 / var(--tw-bg-opacity));
+}
+
+@media (prefers-color-scheme: dark) {
+  .dark\:bg-\[\#28292a\] {
+    --tw-bg-opacity: 1;
+    background-color: rgb(40 41 42 / var(--tw-bg-opacity));
+  }
+
+  .dark\:bg-neutral-800 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(38 38 38 / var(--tw-bg-opacity));
+  }
+
+  .dark\:bg-neutral-900 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(23 23 23 / var(--tw-bg-opacity));
+  }
+
+  .dark\:bg-opacity-50 {
+    --tw-bg-opacity: 0.5;
+  }
+
+  .dark\:stroke-\[\#75b6e7\] {
+    stroke: #75b6e7;
+  }
+
+  .dark\:stroke-neutral-200 {
+    stroke: #e5e5e5;
   }
 }
