@@ -12,11 +12,10 @@ use tracing::debug;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::console;
 
-use rsecret::wallet::wallet_amino::*;
-use rsecret::wallet::wallet_proto::*;
-use secretrs::tx::SignDoc;
+use rsecret::wallet::*;
+use secretrs::tx::{SignDoc, SignMode};
 
-pub use rsecret::wallet::wallet_amino::AccountData;
+pub use rsecret::wallet::AccountData;
 
 #[derive(Serialize, Deserialize, Clone, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -81,15 +80,13 @@ impl Keplr {
     }
 
     pub async fn get_account(chain_id: &str) -> Result<AccountData, Error> {
-        let signer = get_offline_signer_only_amino(chain_id);
-        let accounts = signer
-            .get_accounts()
-            .await
-            .map_err(|_| Error::KeplrUnavailable)?;
-        let accounts = js_sys::Array::from(&accounts);
-        let account = accounts.get(0);
+        let signer = Self::get_offline_signer_only_amino(chain_id);
+        let accounts = signer.get_accounts().await?;
+        // .map_err(|_| Error::KeplrUnavailable)?;
+        // let accounts = js_sys::Array::from(&accounts);
+        let account = accounts[0].clone();
 
-        let account: AccountData = serde_wasm_bindgen::from_value(account)?;
+        // let account: AccountData = serde_wasm_bindgen::from_value(account)?;
 
         Ok(account)
     }
@@ -100,6 +97,18 @@ impl Keplr {
 
     pub fn get_offline_signer_only_amino(chain_id: &str) -> KeplrOfflineSignerOnlyAmino {
         get_offline_signer_only_amino(chain_id).into()
+    }
+
+    // TODO: this doesn't help... idk what to do here
+    pub async fn get_offline_signer_auto(
+        chain_id: &str,
+    ) -> Result<Box<dyn Signer<Error = Error>>, Error> {
+        let key = Self::get_key(chain_id).await?;
+        let signer: Box<dyn Signer<Error = Error>> = match key.is_nano_ledger {
+            true => Box::new(Self::get_offline_signer_only_amino(chain_id)),
+            false => Box::new(Self::get_offline_signer(chain_id)),
+        };
+        Ok(signer)
     }
 
     pub fn get_enigma_utils(chain_id: &str) -> EnigmaUtils {
@@ -149,7 +158,7 @@ impl From<keplr_sys::KeplrOfflineSigner> for KeplrOfflineSigner {
 }
 
 #[async_trait]
-impl DirectSigner for KeplrOfflineSigner {
+impl Signer for KeplrOfflineSigner {
     type Error = super::Error;
 
     // pub fn chain_id(&self) -> String {
@@ -174,6 +183,10 @@ impl DirectSigner for KeplrOfflineSigner {
                 })
         })
         .await
+    }
+
+    async fn get_sign_mode(&self) -> Result<SignMode, Self::Error> {
+        Ok(SignMode::Direct)
     }
 
     async fn sign_amino(
@@ -215,7 +228,7 @@ impl From<keplr_sys::KeplrOfflineSignerOnlyAmino> for KeplrOfflineSignerOnlyAmin
 }
 
 #[async_trait]
-impl AminoSigner for KeplrOfflineSignerOnlyAmino {
+impl Signer for KeplrOfflineSignerOnlyAmino {
     type Error = super::Error;
 
     // pub fn chain_id(&self) -> String {
@@ -242,6 +255,10 @@ impl AminoSigner for KeplrOfflineSignerOnlyAmino {
         .await
     }
 
+    async fn get_sign_mode(&self) -> Result<SignMode, Self::Error> {
+        Ok(SignMode::LegacyAminoJson)
+    }
+
     async fn sign_amino(
         &self,
         signer_address: &str,
@@ -256,6 +273,14 @@ impl AminoSigner for KeplrOfflineSignerOnlyAmino {
         sign_doc: StdSignDoc,
     ) -> Result<AminoSignResponse, Self::Error> {
         todo!()
+    }
+
+    async fn sign_direct(
+        &self,
+        signer_address: &str,
+        sign_doc: SignDocVariant,
+    ) -> Result<DirectSignResponse, Self::Error> {
+        unimplemented!()
     }
 }
 
