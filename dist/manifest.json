@@ -22,7 +22,7 @@
   "id": "/secret-leptos",
   "start_url": "/secret-leptos",
   "background_color": "#171717",
-  "display": "standalone",
+  "display": "minimal-ui",
   "scope": "/secret-leptos",
   "theme_color": "#000000",
   "description": "ho ho ho",
