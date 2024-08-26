@@ -83,9 +83,7 @@ tracing-subscriber = "0.3"
 tracing-subscriber-wasm = "0.1"
 
 # Secret
+keplr-sys = "0.0.1"
 secret-toolkit-snip20 = { version = "0.10.0" }
-
-# Local
-keplr-sys = { path = "../keplr/keplr-sys" }
-rsecret = { path = "../secret-clients/rsecret" }
 secretrs = { version = "0.1" }
+rsecret = { path = "../secret-clients/rsecret" }

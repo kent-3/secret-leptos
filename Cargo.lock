@@ -1763,9 +1763,10 @@ dependencies = [
 
 [[package]]
 name = "keplr-sys"
-version = "0.1.0"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34d9808b8ef3a629399c07a6753080647a04d6856aba846598bf919ed97ea10e"
 dependencies = [
- "js-sys",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
