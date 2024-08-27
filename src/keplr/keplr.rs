@@ -1,16 +1,16 @@
-use crate::keplr::Error;
+use super::Error;
 use async_trait::async_trait;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
-use futures::TryFutureExt;
-use js_sys::JsString;
-use keplr_sys::KeplrOfflineSigner as RawKeplrOfflineSigner;
 use keplr_sys::*;
 use send_wrapper::SendWrapper;
 use serde::{Deserialize, Serialize};
-use std::{rc::Rc, sync::Arc};
+use std::rc::Rc;
 use tracing::debug;
-use wasm_bindgen_futures::spawn_local;
-use web_sys::console;
+use web_sys::{
+    console,
+    js_sys::{self, JsString},
+    wasm_bindgen,
+};
 
 use rsecret::wallet::*;
 use secretrs::tx::{SignDoc, SignMode};

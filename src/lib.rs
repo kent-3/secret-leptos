@@ -1,28 +1,26 @@
-#![allow(unused)]
+// #![allow(unused)]
 
 // use codee::string::FromToStringCodec;
 // use leptos_use::storage::use_local_storage;
 
-use keplr::{keplr_sys, Keplr, Key};
 use leptos::{
     ev::MouseEvent,
     html::{Dialog, Input},
     logging::log,
     prelude::*,
-    spawn::spawn_local,
 };
 use leptos_router::components::{Route, Router, Routes, A};
 use leptos_router_macro::path;
+use secret_toolkit_snip20::{QueryMsg, TokenInfoResponse};
+use send_wrapper::SendWrapper;
+use tonic_web_wasm_client::Client;
+use tracing::{debug, error, info};
+use web_sys::{js_sys, wasm_bindgen::JsValue};
+
 use rsecret::{
     query::{bank::BankQuerier, compute::ComputeQuerier},
     secret_network_client::CreateQuerierOptions,
 };
-use send_wrapper::SendWrapper;
-use serde::Deserialize;
-use serde::Serialize;
-use tonic_web_wasm_client::Client;
-use tracing::{debug, error, info};
-use wasm_bindgen::JsValue;
 
 mod components;
 mod constants;
@@ -35,7 +33,7 @@ mod utils;
 use components::Spinner2;
 use constants::{CHAIN_ID, GRPC_URL};
 use error::Error;
-use keplr::KeplrTests;
+use keplr::{keplr_sys, Keplr, KeplrTests, Key};
 use state::{KeplrSignals, TokenMap, WasmClient};
 
 // TODO: move custom types to seperate module
@@ -61,38 +59,6 @@ impl std::fmt::Display for Coin {
         write!(f, "{} {}", self.amount, self.denom)
     }
 }
-
-// TODO: import these types from secret-toolkit?
-
-use secret_toolkit_snip20::{QueryMsg, TokenInfoResponse};
-
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-// #[serde(rename_all = "snake_case")]
-// pub enum QueryMsg {
-//     TokenInfo {},
-//     MemberCode { address: String, key: String },
-//     ValidCodes { codes: Vec<String> },
-// }
-//
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(rename_all = "snake_case")]
-// pub enum QueryAnswer {
-//     TokenInfo {
-//         name: String,
-//         symbol: String,
-//         decimals: u8,
-//         total_supply: String,
-//     },
-//     MemberCode {
-//         code: String,
-//     },
-//     ValidCodes {
-//         codes: Vec<String>,
-//     },
-//     ViewingKeyError {
-//         msg: String,
-//     },
-// }
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -415,7 +381,6 @@ fn Home() -> impl IntoView {
         })
     };
 
-    // TODO: update this since keplr.key is a Result now
     let user_balance = Resource::new(
         move || keplr.key.get(),
         move |key| {
@@ -448,6 +413,9 @@ fn Home() -> impl IntoView {
         encryption_utils,
     };
 
+    // TODO: move all static resources like this (query response is always the same) to a separate
+    // module. Implement caching with local storage. They can all use a random account for the
+    // EncryptionUtils, since they don't depend on user address.
     let contract_address = "secret1s09x2xvfd2lp2skgzm29w2xtena7s8fq98v852";
     let code_hash = "9a00ca4ad505e9be7e6e6dddf8d939b7ec7e9ac8e109c8681f10db9cacb36d42";
     let token_info = Resource::new(
@@ -498,7 +466,6 @@ fn Home() -> impl IntoView {
                 view! {
                     <div class="error">
                         <p>"Errors: "</p>
-                        // we can render a list of errors as strings, if we'd like
                         <ul>
                             {move || {
                                 errors

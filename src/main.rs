@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use secret_leptos::App;
 use tracing_subscriber::fmt;
 use tracing_subscriber_wasm::MakeConsoleWriter;
-use wasm_bindgen::JsValue;
+use web_sys::{js_sys, wasm_bindgen::JsValue};
 
 fn main() {
     fmt()

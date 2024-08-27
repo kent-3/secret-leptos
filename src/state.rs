@@ -3,7 +3,6 @@ use crate::{
     error::Error,
     keplr::{tokens::ContractInfo, Keplr, Key},
 };
-use codee::string::JsonSerdeCodec;
 use leptos::prelude::*;
 use send_wrapper::SendWrapper;
 use std::collections::HashMap;

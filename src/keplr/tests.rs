@@ -4,6 +4,7 @@ use keplr_sys; // normally you wouldn't use keplr_sys directly
 use leptos::prelude::*;
 use leptos::web_sys::console;
 use tracing::{debug, info};
+use web_sys::js_sys;
 
 async fn enable_keplr(chain_id: impl ToString) -> bool {
     debug!("Trying to enable Keplr...");

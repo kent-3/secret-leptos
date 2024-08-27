@@ -1,3 +1,5 @@
+use web_sys::{js_sys, wasm_bindgen};
+
 #[derive(thiserror::Error, serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub enum Error {
     #[error("An error occurred in JavaScript: {0}")]
@@ -10,8 +12,8 @@ pub enum Error {
     KeplrUnavailable,
 }
 
-impl From<js_sys::wasm_bindgen::JsValue> for Error {
-    fn from(error: js_sys::wasm_bindgen::JsValue) -> Self {
+impl From<wasm_bindgen::JsValue> for Error {
+    fn from(error: wasm_bindgen::JsValue) -> Self {
         let message = js_sys::Error::from(error)
             .message()
             .as_string()
