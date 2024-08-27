@@ -478,7 +478,9 @@ fn Home() -> impl IntoView {
                     </div>
                 }
             }>
-                <p>{move || user_balance.get()}</p>
+                <Suspense fallback=move || view! { <p>"Loading (user_balance)..."</p> }>
+                    <p>{move || Suspend::new(async move {user_balance.await})}</p>
+                </Suspense>
             </ErrorBoundary>
             <Suspense>
                 <h2>"Viewing Keys"</h2>

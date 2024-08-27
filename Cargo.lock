@@ -1904,7 +1904,7 @@ dependencies = [
  "gloo-net 0.5.0",
  "js-sys",
  "leptos",
- "leptos_router_macro 0.7.0-beta",
+ "leptos_router_macro",
  "once_cell",
  "or_poisoned",
  "paste",
@@ -1921,17 +1921,6 @@ dependencies = [
 name = "leptos_router_macro"
 version = "0.7.0-beta"
 source = "git+https://github.com/leptos-rs/leptos?branch=leptos_0.7#3dbedfc8710add4bc9a94fe27fa000fb180f393b"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
-]
-
-[[package]]
-name = "leptos_router_macro"
-version = "0.7.0-beta2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a31c23433739e695d4358f2b2dcbe5cba7247977e68cf1d1cc0de62becdfa4f"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -2880,7 +2869,7 @@ dependencies = [
  "leptos",
  "leptos_meta",
  "leptos_router",
- "leptos_router_macro 0.7.0-beta2",
+ "leptos_router_macro",
  "rsecret",
  "secret-toolkit-snip20",
  "secretrs",
