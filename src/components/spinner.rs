@@ -5,8 +5,7 @@ pub fn Spinner() -> impl IntoView {
     view! {
         <div
             class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-clip bg-neutral-400 bg-opacity-50  dark:bg-neutral-900 dark:bg-opacity-50"
-            style="perspective: 600px"
-            style="backdrop-filter: blur(2px)"
+            style="perspective: 600px; backdrop-filter: blur(2px);"
         >
             <svg
                 viewBox="0 0 59 59"

@@ -1,4 +1,4 @@
-// #![allow(unused)]
+#![allow(unused)]
 
 // use codee::string::FromToStringCodec;
 // use leptos_use::storage::use_local_storage;
